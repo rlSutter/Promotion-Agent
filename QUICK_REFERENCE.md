@@ -56,28 +56,30 @@ docker-compose up -d --build
 
 ### Database Queries
 
-```bash
-# Open database
-sqlite3 promotion_agent.db
+**Windows / any platform (no sqlite3 CLI needed):**
+```powershell
+python db_shell.py
+```
+Then type SQL (e.g. the queries below). Type `.quit` to exit.
 
-# See pending promotions
+**Mac/Linux (if sqlite3 CLI is installed):**
+```bash
+sqlite3 promotion_agent.db
+```
+
+**Example queries:**
+```sql
+-- Pending promotions
 SELECT title, platform, created_date 
 FROM promotions p 
 JOIN posts ON p.post_id = posts.id 
 WHERE p.status = 'pending_review';
 
-# See all posts
-SELECT title, published_date, status 
-FROM posts 
-ORDER BY published_date DESC;
+-- All posts
+SELECT title, published_date, status FROM posts ORDER BY published_date DESC;
 
-# Count by status
-SELECT status, COUNT(*) 
-FROM promotions 
-GROUP BY status;
-
-# Exit
-.quit
+-- Count by status
+SELECT status, COUNT(*) FROM promotions GROUP BY status;
 ```
 
 ### Manual Triggers

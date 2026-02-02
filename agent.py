@@ -6,6 +6,7 @@ and provides a review/release dashboard.
 """
 
 import os
+import shutil
 import json
 import sqlite3
 import hashlib
@@ -16,14 +17,35 @@ import feedparser
 import schedule
 import time
 from typing import Dict, List, Optional, Tuple
+from dotenv import load_dotenv
+
+# Paths: use script directory so DB and files work from any cwd (Windows/OneDrive)
+_script_dir = Path(__file__).resolve().parent
+
+# One-time: create .env from .env.example if missing (so users don't run Copy-Item manually)
+_env_path = _script_dir / ".env"
+_env_example = _script_dir / ".env.example"
+if not _env_path.exists() and _env_example.exists():
+    shutil.copy(_env_example, _env_path)
+    print("Created .env from .env.example. Edit .env with your SUBSTACK_URL and ANTHROPIC_API_KEY, then restart.")
+load_dotenv()
 
 # Configuration
+_raw_substack = os.getenv("SUBSTACK_URL", "https://yoursubstack.substack.com/feed")
+
+# Fix common mistake: /publish/home (private dashboard) → /feed (public RSS)
+if "/publish" in _raw_substack or (_raw_substack.rstrip("/").endswith("substack.com") and "/feed" not in _raw_substack):
+    from urllib.parse import urlparse
+    parsed = urlparse(_raw_substack)
+    _raw_substack = f"{parsed.scheme}://{parsed.netloc}/feed"
+    print(f"SUBSTACK_URL was a publish/dashboard URL; using RSS feed instead: {_raw_substack}")
+
 CONFIG = {
-    "substack_url": os.getenv("SUBSTACK_URL", "https://yoursubstack.substack.com/feed"),
+    "substack_url": _raw_substack,
     "anthropic_api_key": os.getenv("ANTHROPIC_API_KEY"),
-    "db_path": "promotion_agent.db",
-    "review_dashboard_path": "review_dashboard.json",
-    "check_interval_minutes": 60,
+    "db_path": os.getenv("PROMOTION_AGENT_DB") or str(_script_dir / "promotion_agent.db"),
+    "review_dashboard_path": str(_script_dir / "review_dashboard.json"),
+    "check_interval_minutes": int(os.getenv("CHECK_INTERVAL_MINUTES", "60")),
 }
 
 # Platform routing rules based on keywords/topics
@@ -46,16 +68,33 @@ PLATFORM_ROUTING = {
 class PromotionAgent:
     def __init__(self):
         self.db_path = CONFIG["db_path"]
+        # Create database and tables first (before Anthropic client), so DB exists even if API key is missing
+        self.init_database()
         self.anthropic_client = anthropic.Anthropic(
             api_key=CONFIG["anthropic_api_key"]
         )
-        self.init_database()
     
     def init_database(self):
         """Initialize SQLite database for tracking posts and promotions"""
-        conn = sqlite3.connect(self.db_path)
+        try:
+            conn = self._db_connect()
+        except sqlite3.OperationalError as e:
+            # Fallback for Windows/OneDrive: use file URI with forward slashes
+            uri = "file:///" + Path(self.db_path).resolve().as_posix().replace("\\", "/") + "?mode=rwc"
+            try:
+                conn = sqlite3.connect(uri, uri=True)
+                self._db_uri = uri
+                self._use_db_uri = True
+            except sqlite3.OperationalError as e2:
+                print(f"[DB] Error: Could not create database at {self.db_path}", flush=True)
+                print(f"[DB] First error: {e}", flush=True)
+                print(f"[DB] URI fallback error: {e2}", flush=True)
+                print("[DB] Try: right-click project folder → 'Always keep on this device' (OneDrive); check permissions.", flush=True)
+                raise
+        else:
+            self._use_db_uri = False
         cursor = conn.cursor()
-        
+
         # Posts table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS posts (
@@ -109,13 +148,20 @@ class PromotionAgent:
         
         conn.commit()
         conn.close()
+        print(f"[DB] Database initialized at: {self.db_path}")
+
+    def _db_connect(self):
+        """Open DB connection (uses URI fallback on Windows/OneDrive if needed)."""
+        if getattr(self, "_use_db_uri", False):
+            return sqlite3.connect(self._db_uri, uri=True)
+        return sqlite3.connect(self.db_path)
     
     def check_for_new_posts(self):
         """Monitor Substack RSS feed for new posts"""
         print(f"[{datetime.now()}] Checking for new posts...")
         
         feed = feedparser.parse(CONFIG["substack_url"])
-        conn = sqlite3.connect(self.db_path)
+        conn = self._db_connect()
         cursor = conn.cursor()
         
         new_posts = []
@@ -249,23 +295,38 @@ Return ONLY the promotional post text, including the link at the end ({url})."""
         
         print(f"\n[Processing] {post['title']}")
         
+        try:
+            self._process_new_post_impl(post)
+        except anthropic.BadRequestError as e:
+            err_msg = str(e).lower()
+            if "credit" in err_msg or "billing" in err_msg or "balance" in err_msg:
+                print("\n[ERROR] Anthropic API: Your credit balance is too low.")
+                print("  → Go to https://console.anthropic.com/ → Plans & Billing")
+                print("  → Add credits or upgrade, then restart the agent.")
+            raise
+        except anthropic.APIStatusError as e:
+            print(f"\n[ERROR] Anthropic API error ({e.status_code}): {e}")
+            raise
+
+    def _process_new_post_impl(self, post: Dict):
+        """Implementation of process_new_post (called inside try/except for API errors)."""
         # Step 1: Extract outward sentence
         print("  → Extracting outward sentence...")
         outward_sentence = self.extract_outward_sentence(post["title"], post["content"])
         print(f"     '{outward_sentence}'")
-        
+
         # Step 2: Determine platform
         platform = self.determine_platform(post["title"], post["content"])
         print(f"  → Routed to: {platform}")
-        
+
         # Step 3: Generate promotional post
         print("  → Generating promotional post...")
         promo_post = self.generate_promotional_post(
             post["title"], post["content"], outward_sentence, platform, post["url"]
         )
-        
+
         # Step 4: Save to database
-        conn = sqlite3.connect(self.db_path)
+        conn = self._db_connect()
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO promotions (post_id, platform, outward_sentence, promotional_post, created_date)
@@ -273,12 +334,12 @@ Return ONLY the promotional post text, including the link at the end ({url})."""
         """, (post["id"], platform, outward_sentence, promo_post, datetime.now().isoformat()))
         conn.commit()
         conn.close()
-        
+
         print("  → Saved to review dashboard")
-        
+
         # Generate ecosystem commenting suggestions
         self.generate_commenting_tasks(post["id"], post["title"], platform)
-    
+
     def generate_commenting_tasks(self, post_id: str, title: str, platform: str):
         """Generate suggestions for ecosystem commenting"""
         
@@ -306,7 +367,7 @@ Return as a brief numbered list."""
         
         suggestions = message.content[0].text.strip()
         
-        conn = sqlite3.connect(self.db_path)
+        conn = self._db_connect()
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO activity_log (post_id, activity_type, details, completed_date)
@@ -318,7 +379,7 @@ Return as a brief numbered list."""
     def generate_review_dashboard(self):
         """Generate JSON file with pending promotions for review"""
         
-        conn = sqlite3.connect(self.db_path)
+        conn = self._db_connect()
         cursor = conn.cursor()
         
         # Get pending promotions
@@ -390,7 +451,7 @@ Return as a brief numbered list."""
     
     def mark_promotion_published(self, promotion_id: int):
         """Mark a promotion as published (called via API or manually)"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._db_connect()
         cursor = conn.cursor()
         cursor.execute("""
             UPDATE promotions
@@ -403,7 +464,7 @@ Return as a brief numbered list."""
     def generate_weekly_onramp_post(self):
         """Generate the weekly 'start here' routing post"""
         
-        conn = sqlite3.connect(self.db_path)
+        conn = self._db_connect()
         cursor = conn.cursor()
         
         # Get recent published posts
@@ -450,7 +511,7 @@ Return the complete post text with links."""
         onramp_content = message.content[0].text.strip()
         
         # Save as weekly task
-        conn = sqlite3.connect(self.db_path)
+        conn = self._db_connect()
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO weekly_tasks (task_type, content, due_date, created_date)

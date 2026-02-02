@@ -18,20 +18,21 @@ Instructions for running the Blog Promotion Agent locally (Docker) and deploying
 - Mac: Install Docker Desktop for Mac
 
 ### Steps
-
-1. **Clone or open the project**
+                        1. **Clone or open the project**
    ```powershell
    cd "path\to\Promotion Agent"
    ```
 
-2. **Create environment file**
-   ```powershell
-   # Windows (PowerShell)
-   Copy-Item .env.example .env
+2. **Create and edit `.env`**
+   - If `.env` does not exist, it is created automatically from `.env.example` the first time you run the agent or server (e.g. `docker-compose up` or `python agent.py`).
+   - Alternatively, run the setup script to create `.env` interactively:
+     ```powershell
+     # Windows (PowerShell)
+     .\setup.ps1
 
-   # Mac/Linux
-   cp .env.example .env
-   ```
+     # Mac/Linux
+     ./setup.sh
+     ```
 
 3. **Edit `.env` with your values**
    - **SUBSTACK_URL** — Your Substack RSS feed URL, e.g. `https://yoursubstack.substack.com/feed`

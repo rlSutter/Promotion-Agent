@@ -85,14 +85,9 @@ chmod +x setup.sh
 .\setup.ps1
 ```
 
-Or manually copy the environment template:
-```bash
-cp .env.example .env
+If `.env` does not exist, it is created automatically from `.env.example` the first time you run the agent or `docker-compose up`. Edit `.env` with your values:
 ```
-
-Then edit `.env` with your values:
-```bash
-SUBSTACK_URL=https://yoursubstack.substack.com/feed
+SUBSTACK_URL=https://yoursubstack.substack.com/feed   # Use /feed, not /publish/home
 ANTHROPIC_API_KEY=sk-ant-your-key-here
 ```
 
@@ -270,26 +265,54 @@ curl http://localhost:5000/api/stats
 
 ### Manual Database Queries
 
+**All platforms (Python has sqlite3 built in):**
+```powershell
+python db_shell.py
+```
+Then type SQL, e.g. `SELECT * FROM promotions WHERE status = 'pending_review';` — type `.quit` to exit.
+
+**If you have the sqlite3 CLI installed** (e.g. Mac/Linux, or [SQLite for Windows](https://www.sqlite.org/download.html)):
 ```bash
 sqlite3 promotion_agent.db
-
-# See pending promotions
-SELECT * FROM promotions WHERE status = 'pending_review';
-
-# See all posts
-SELECT title, published_date FROM posts ORDER BY published_date DESC;
+# See pending promotions: SELECT * FROM promotions WHERE status = 'pending_review';
+# See all posts: SELECT title, published_date FROM posts ORDER BY published_date DESC;
 ```
+
+## Debugging server.py
+
+If the server fails to start or you want to step through code:
+
+1. **Run from the project folder** (paths are relative):
+   ```powershell
+   cd "path\to\Promotion Agent"
+   python server.py
+   ```
+   On startup the server prints its working directory and DB path so you can confirm it found files.
+
+2. **Use the debugger in Cursor/VS Code**
+   - Open **Run and Debug** (Ctrl+Shift+D)
+   - Choose **"Debug server.py"**
+   - Set breakpoints in `server.py` (click in the gutter)
+   - Press F5 to start; the server will stop on breakpoints
+
+3. **Common failures**
+   - **"unable to open database file"** — Server now runs from its script directory and uses an absolute DB path; if it still fails, ensure the agent has run once so `promotion_agent.db` exists.
+   - **Database not created** — The agent now creates the DB and tables before initializing the Anthropic client, so the DB should be created even if the API key is missing. If it still isn't, run `python create_db.py` to create it, then run the agent again.
+   - **Missing tables** — `/api/stats` no longer crashes if `activity_log` (or other tables) don't exist yet; it returns empty counts.
+   - **Port 5000 in use** — Change the port in the last line of `server.py` (e.g. `port=5001`) or stop the other process using 5000.
 
 ## Troubleshooting
 
 **Agent not detecting posts:**
-- Verify RSS feed URL is correct: `curl https://yoursubstack.substack.com/feed`
-- Check agent logs for errors
-- Ensure agent is running: `docker-compose ps`
+- Use the **feed** URL (`https://yoursubstack.substack.com/feed`), not the publish URL (`/publish/home`—that page is private and returns no RSS).
+- Verify: `curl https://yoursubstack.substack.com/feed` should return XML.
+- Check agent logs for errors.
+- Ensure agent is running: `docker-compose ps`.
 
-**Dashboard shows nothing:**
+**Dashboard shows nothing / Permission denied:**
 - Wait up to 1 hour for first check (or restart agent to trigger immediate check)
 - Verify `review_dashboard.json` exists and is readable
+- **Permission denied** on Windows/OneDrive: The server now falls back to an empty dashboard if it can't read the file. To fix: right-click the project folder → "Always keep on this device" (OneDrive); or ensure the file isn't open/locked elsewhere; or clear Read-only on the file.
 - Check browser console for errors
 
 **API key errors:**
@@ -325,7 +348,7 @@ Potential additions you could make:
 For issues or questions:
 1. Check the troubleshooting section above
 2. Review agent logs: `docker-compose logs`
-3. Check database state with sqlite3
+3. Check database state: `python db_shell.py` (or sqlite3 CLI if installed)
 4. Verify environment variables are set correctly
 
 ## License

@@ -10,6 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY agent.py .
 COPY server.py .
 COPY dashboard.html .
+COPY .env.example .
 
 # Create data directory for SQLite
 RUN mkdir -p /app/data
