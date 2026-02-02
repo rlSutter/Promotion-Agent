@@ -14,7 +14,7 @@ Detailed instructions for deploying the Blog Promotion Agent to various cloud pl
    git init
    git add .
    git commit -m "Initial commit"
-   git remote add origin https://github.com/rlSutter/Promotion-Agent/promotion-agent.git
+   git remote add origin https://github.com/yourusername/promotion-agent.git
    git push -u origin main
    ```
 

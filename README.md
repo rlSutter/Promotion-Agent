@@ -72,18 +72,31 @@ Substack RSS Feed
 
 1. Clone or download this directory
 
-2. Copy the environment template:
+2. Run the setup script:
+
+**Linux/Mac:**
+```bash
+chmod +x setup.sh
+./setup.sh
+```
+
+**Windows (PowerShell):**
+```powershell
+.\setup.ps1
+```
+
+Or manually copy the environment template:
 ```bash
 cp .env.example .env
 ```
 
-3. Edit `.env` with your values:
+Then edit `.env` with your values:
 ```bash
 SUBSTACK_URL=https://yoursubstack.substack.com/feed
 ANTHROPIC_API_KEY=sk-ant-your-key-here
 ```
 
-4. Start the agent:
+3. Start the agent:
 ```bash
 docker-compose up -d
 ```

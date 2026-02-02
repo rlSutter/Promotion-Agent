@@ -122,14 +122,22 @@ promotion_agent/
 ### Quickest Path (5 minutes)
 
 ```bash
+# Linux/Mac
 # 1. Run setup script
 ./setup.sh
 
+# Windows PowerShell
+# 1. Run setup script
+.\setup.ps1
+
+# All platforms
 # 2. Start the agent
 docker-compose up -d
 
 # 3. Open dashboard
-open http://localhost:5000
+open http://localhost:5000  # Mac
+start http://localhost:5000 # Windows
+xdg-open http://localhost:5000 # Linux
 ```
 
 ### Cloud Deployment (15 minutes)

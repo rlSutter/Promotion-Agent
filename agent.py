@@ -19,8 +19,8 @@ from typing import Dict, List, Optional, Tuple
 
 # Configuration
 CONFIG = {
-    "substack_url": os.getenv("SUBSTACK_URL", "https://rlsutter.substack.com/feed"),
-    "anthropic_api_key": os.getenv("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"),
+    "substack_url": os.getenv("SUBSTACK_URL", "https://yoursubstack.substack.com/feed"),
+    "anthropic_api_key": os.getenv("ANTHROPIC_API_KEY"),
     "db_path": "promotion_agent.db",
     "review_dashboard_path": "review_dashboard.json",
     "check_interval_minutes": 60,
