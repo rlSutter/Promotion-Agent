@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  promotion-agent:
+    build: .
+    container_name: promotion-agent
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - SUBSTACK_URL=${SUBSTACK_URL}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CHECK_INTERVAL_MINUTES=${CHECK_INTERVAL_MINUTES:-60}
+    volumes:
+      - ./data:/app/data
+      - ./promotion_agent.db:/app/promotion_agent.db
+      - ./review_dashboard.json:/app/review_dashboard.json
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/stats"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
