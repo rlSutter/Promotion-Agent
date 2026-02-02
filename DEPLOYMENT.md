@@ -1,8 +1,79 @@
-# Cloud Deployment Guide
+# Deployment Guide
 
-Detailed instructions for deploying the Blog Promotion Agent to various cloud platforms.
+Instructions for running the Blog Promotion Agent locally (Docker) and deploying to cloud platforms.
 
-## Railway (Recommended - Easiest)
+---
+
+## Local Deployment (Docker)
+
+**Best for:** Testing before cloud deploy, development, or running on your own machine.
+
+**Pros:** No cloud account needed, full control, data stays on your machine, free  
+**Cons:** Your computer must be on for the agent to run; no public URL unless you expose port 5000
+
+### Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (includes Docker and Docker Compose)  
+- Windows: Install Docker Desktop for Windows and ensure WSL 2 is enabled if prompted  
+- Mac: Install Docker Desktop for Mac
+
+### Steps
+
+1. **Clone or open the project**
+   ```powershell
+   cd "path\to\Promotion Agent"
+   ```
+
+2. **Create environment file**
+   ```powershell
+   # Windows (PowerShell)
+   Copy-Item .env.example .env
+
+   # Mac/Linux
+   cp .env.example .env
+   ```
+
+3. **Edit `.env` with your values**
+   - **SUBSTACK_URL** — Your Substack RSS feed URL, e.g. `https://yoursubstack.substack.com/feed`
+   - **ANTHROPIC_API_KEY** — Your API key from [console.anthropic.com](https://console.anthropic.com/)
+   - **CHECK_INTERVAL_MINUTES** — Optional; default is `60`
+
+4. **Build and run**
+   ```powershell
+   docker-compose up -d
+   ```
+   The first run builds the image, then starts the agent and dashboard.  
+   Dashboard: **http://localhost:5000**
+
+5. **Run in foreground (optional)**  
+   To watch logs while testing:
+   ```powershell
+   docker-compose up
+   ```
+   Stop with **Ctrl+C**.
+
+### Useful commands
+
+| Command | Purpose |
+|--------|--------|
+| `docker-compose logs -f promotion-agent` | Follow agent and server logs |
+| `docker-compose ps` | See if the container is running |
+| `docker-compose down` | Stop and remove the container |
+| `curl http://localhost:5000/api/stats` | Check dashboard API / health |
+
+### Data persistence
+
+Docker Compose mounts these from your project folder so data survives restarts:
+
+- `./data` — Application data directory  
+- `./promotion_agent.db` — SQLite database  
+- `./review_dashboard.json` — Dashboard state  
+
+Do not commit `.env` or secrets; `.env` is listed in `.gitignore`.
+
+---
+
+## Railway (Recommended - Easiest for Cloud)
 
 **Pros:** Free tier, automatic deployments, built-in domain, excellent for beginners
 **Cons:** Database not persistent across deploys on free tier (use external DB for production)
@@ -14,8 +85,16 @@ Detailed instructions for deploying the Blog Promotion Agent to various cloud pl
    git init
    git add .
    git commit -m "Initial commit"
-   git remote add origin https://github.com/yourusername/promotion-agent.git
+   git remote add origin https://github.com/rlSutter/Promotion-Agent/promotion-agent.git
    git push -u origin main
+
+   git init
+   git remote add origin https://github.com/rlSutter/Promotion-Agent.git
+   git add .
+   git commit -m "Initial commit"
+   git branch -M main
+   git push -u origin main
+
    ```
 
 2. **Sign up for Railway**
@@ -357,7 +436,8 @@ flyctl scale memory 512
 
 | Platform | Free Tier | Persistent Storage | Ease of Use | Best For |
 |----------|-----------|-------------------|-------------|----------|
-| Railway | ✅ Yes | ⚠️ Paid only | ⭐⭐⭐⭐⭐ | Beginners |
+| **Local (Docker)** | ✅ Yes | ✅ Yes (host disk) | ⭐⭐⭐⭐⭐ | Testing, development |
+| Railway | ✅ Yes | ⚠️ Paid only | ⭐⭐⭐⭐⭐ | Beginners (cloud) |
 | Render | ✅ Yes | ✅ Yes (1GB) | ⭐⭐⭐⭐ | Most users |
 | Fly.io | ✅ Yes | ✅ Yes | ⭐⭐⭐ | Technical users |
 | Cloud Run | ✅ Yes | ⚠️ Complex | ⭐⭐ | GCP users |
@@ -366,7 +446,12 @@ flyctl scale memory 512
 
 ## Recommendations
 
-**For beginners:** Railway
+**For testing first:** Local (Docker)  
+- Run `docker-compose up -d` and open http://localhost:5000  
+- No cloud account required; data stays on your machine  
+- Use this to verify the agent and dashboard before deploying to cloud  
+
+**For beginners (cloud):** Railway
 - Easiest setup
 - Auto-deploys from GitHub
 - Great free tier
