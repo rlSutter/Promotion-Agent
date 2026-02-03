@@ -32,7 +32,8 @@ app = Flask(__name__)
 CORS(app)
 
 DB_PATH = os.getenv("PROMOTION_AGENT_DB") or str(_script_dir / "promotion_agent.db")
-
+# Dashboard JSON lives next to the DB (so when DB is in temp, dashboard is writable too)
+REVIEW_DASHBOARD_PATH = Path(DB_PATH).parent / "review_dashboard.json"
 
 DASHBOARD_HTML_PATH = _script_dir / "dashboard.html"
 
@@ -49,8 +50,6 @@ def index():
             {"Content-Type": "text/html"},
         )
 
-
-REVIEW_DASHBOARD_PATH = _script_dir / "review_dashboard.json"
 
 def _empty_dashboard():
     return jsonify({

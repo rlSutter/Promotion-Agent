@@ -40,11 +40,12 @@ if "/publish" in _raw_substack or (_raw_substack.rstrip("/").endswith("substack.
     _raw_substack = f"{parsed.scheme}://{parsed.netloc}/feed"
     print(f"SUBSTACK_URL was a publish/dashboard URL; using RSS feed instead: {_raw_substack}")
 
+_db_path = os.getenv("PROMOTION_AGENT_DB") or str(_script_dir / "promotion_agent.db")
 CONFIG = {
     "substack_url": _raw_substack,
     "anthropic_api_key": os.getenv("ANTHROPIC_API_KEY"),
-    "db_path": os.getenv("PROMOTION_AGENT_DB") or str(_script_dir / "promotion_agent.db"),
-    "review_dashboard_path": str(_script_dir / "review_dashboard.json"),
+    "db_path": _db_path,
+    "review_dashboard_path": str(Path(_db_path).parent / "review_dashboard.json"),
     "check_interval_minutes": int(os.getenv("CHECK_INTERVAL_MINUTES", "60")),
 }
 
