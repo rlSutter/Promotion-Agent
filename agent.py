@@ -434,6 +434,29 @@ Return as a brief numbered list."""
                 "created_date": row[4],
             })
         
+        # Archived: skipped or published (not in working list, can be recovered)
+        cursor.execute("""
+            SELECT p.id, p.post_id, posts.title, posts.url, p.platform,
+                   p.outward_sentence, p.promotional_post, p.created_date, p.status, p.published_date
+            FROM promotions p
+            JOIN posts ON p.post_id = posts.id
+            WHERE p.status IN ('skipped', 'published')
+            ORDER BY COALESCE(p.published_date, p.created_date) DESC
+        """)
+        archived = []
+        for row in cursor.fetchall():
+            archived.append({
+                "promotion_id": row[0],
+                "post_id": row[1],
+                "post_title": row[2],
+                "post_url": row[3],
+                "platform": row[4],
+                "outward_sentence": row[5],
+                "promotional_post": row[6],
+                "created_date": row[7],
+                "status": row[8],
+                "published_date": row[9],
+            })
         conn.close()
         
         dashboard = {
@@ -441,6 +464,7 @@ Return as a brief numbered list."""
             "pending_promotions": pending,
             "commenting_suggestions": commenting_tasks,
             "weekly_tasks": weekly_tasks,
+            "archived_promotions": archived,
         }
         
         with open(CONFIG["review_dashboard_path"], "w") as f:

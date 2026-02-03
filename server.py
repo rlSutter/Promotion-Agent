@@ -25,6 +25,7 @@ load_dotenv()
 
 from flask import Flask, jsonify, send_file, request
 from flask_cors import CORS
+import json
 import sqlite3
 from datetime import datetime
 
@@ -34,6 +35,81 @@ CORS(app)
 DB_PATH = os.getenv("PROMOTION_AGENT_DB") or str(_script_dir / "promotion_agent.db")
 # Dashboard JSON lives next to the DB (so when DB is in temp, dashboard is writable too)
 REVIEW_DASHBOARD_PATH = Path(DB_PATH).parent / "review_dashboard.json"
+
+def _regenerate_dashboard_json():
+    """Regenerate review_dashboard.json from DB so UI refresh shows updated list."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT p.id, p.post_id, posts.title, posts.url, p.platform,
+                   p.outward_sentence, p.promotional_post, p.created_date
+            FROM promotions p
+            JOIN posts ON p.post_id = posts.id
+            WHERE p.status = 'pending_review'
+            ORDER BY p.created_date DESC
+        """)
+        pending = []
+        for row in cursor.fetchall():
+            pending.append({
+                "promotion_id": row[0],
+                "post_id": row[1],
+                "post_title": row[2],
+                "post_url": row[3],
+                "platform": row[4],
+                "outward_sentence": row[5],
+                "promotional_post": row[6],
+                "created_date": row[7],
+            })
+        cursor.execute("""
+            SELECT post_id, details FROM activity_log
+            WHERE activity_type = 'commenting_suggestions'
+            AND post_id IN (SELECT post_id FROM promotions WHERE status = 'pending_review')
+        """)
+        commenting_tasks = {row[0]: row[1] for row in cursor.fetchall()}
+        cursor.execute("""
+            SELECT id, task_type, content, due_date, created_date
+            FROM weekly_tasks WHERE status = 'pending' ORDER BY due_date
+        """)
+        weekly_tasks = [
+            {"task_id": r[0], "task_type": r[1], "content": r[2], "due_date": r[3], "created_date": r[4]}
+            for r in cursor.fetchall()
+        ]
+        # Archived: skipped or published (not in working list, can be recovered)
+        cursor.execute("""
+            SELECT p.id, p.post_id, posts.title, posts.url, p.platform,
+                   p.outward_sentence, p.promotional_post, p.created_date, p.status, p.published_date
+            FROM promotions p
+            JOIN posts ON p.post_id = posts.id
+            WHERE p.status IN ('skipped', 'published')
+            ORDER BY COALESCE(p.published_date, p.created_date) DESC
+        """)
+        archived = []
+        for row in cursor.fetchall():
+            archived.append({
+                "promotion_id": row[0],
+                "post_id": row[1],
+                "post_title": row[2],
+                "post_url": row[3],
+                "platform": row[4],
+                "outward_sentence": row[5],
+                "promotional_post": row[6],
+                "created_date": row[7],
+                "status": row[8],
+                "published_date": row[9],
+            })
+        conn.close()
+        dashboard = {
+            "generated_at": datetime.now().isoformat(),
+            "pending_promotions": pending,
+            "commenting_suggestions": commenting_tasks,
+            "weekly_tasks": weekly_tasks,
+            "archived_promotions": archived,
+        }
+        with open(REVIEW_DASHBOARD_PATH, "w") as f:
+            json.dump(dashboard, f, indent=2)
+    except (sqlite3.OperationalError, OSError):
+        pass
 
 DASHBOARD_HTML_PATH = _script_dir / "dashboard.html"
 
@@ -74,33 +150,58 @@ def dashboard_json():
 @app.route('/api/mark-published/<int:promotion_id>', methods=['POST'])
 def mark_published(promotion_id):
     """Mark a promotion as published"""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        UPDATE promotions
-        SET status = 'published', published_date = ?
-        WHERE id = ?
-    """, (datetime.now().isoformat(), promotion_id))
-    conn.commit()
-    conn.close()
-    
-    return jsonify({"status": "success", "promotion_id": promotion_id})
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE promotions
+            SET status = 'published', published_date = ?
+            WHERE id = ?
+        """, (datetime.now().isoformat(), promotion_id))
+        conn.commit()
+        conn.close()
+        _regenerate_dashboard_json()
+        return jsonify({"status": "success", "promotion_id": promotion_id})
+    except sqlite3.OperationalError as e:
+        return jsonify({"error": str(e), "status": "error"}), 500
 
 
 @app.route('/api/skip-promotion/<int:promotion_id>', methods=['POST'])
 def skip_promotion(promotion_id):
     """Mark a promotion as skipped"""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        UPDATE promotions
-        SET status = 'skipped'
-        WHERE id = ?
-    """, (promotion_id,))
-    conn.commit()
-    conn.close()
-    
-    return jsonify({"status": "success", "promotion_id": promotion_id})
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE promotions
+            SET status = 'skipped'
+            WHERE id = ?
+        """, (promotion_id,))
+        conn.commit()
+        conn.close()
+        _regenerate_dashboard_json()
+        return jsonify({"status": "success", "promotion_id": promotion_id})
+    except sqlite3.OperationalError as e:
+        return jsonify({"error": str(e), "status": "error"}), 500
+
+
+@app.route('/api/recover-promotion/<int:promotion_id>', methods=['POST'])
+def recover_promotion(promotion_id):
+    """Move a promotion from archive back to pending (recover to working list)."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE promotions
+            SET status = 'pending_review', published_date = NULL
+            WHERE id = ?
+        """, (promotion_id,))
+        conn.commit()
+        conn.close()
+        _regenerate_dashboard_json()
+        return jsonify({"status": "success", "promotion_id": promotion_id})
+    except sqlite3.OperationalError as e:
+        return jsonify({"error": str(e), "status": "error"}), 500
 
 
 @app.route('/api/complete-task/<int:task_id>', methods=['POST'])
@@ -148,7 +249,15 @@ def stats():
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
     except sqlite3.OperationalError as e:
-        return jsonify({"error": str(e), "total_posts": 0, "promotions": {}, "recent_activity": {}}), 500
+        hint = " Set PROMOTION_AGENT_DB in .env to your DB path (e.g. C:/Users/You/AppData/Local/Temp/promotion_agent.db) if the DB is in temp or another folder."
+        return jsonify({
+            "error": str(e),
+            "hint": hint.strip(),
+            "db_path": DB_PATH,
+            "total_posts": 0,
+            "promotions": {},
+            "recent_activity": {}
+        }), 500
 
     try:
         # Count posts (table may not exist if agent hasn't run yet)

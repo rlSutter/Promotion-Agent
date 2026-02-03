@@ -11,6 +11,8 @@ Instructions for running the Blog Promotion Agent locally (Docker) and deploying
 **Pros:** No cloud account needed, full control, data stays on your machine, free  
 **Cons:** Your computer must be on for the agent to run; no public URL unless you expose port 5000
 
+**Full plan:** For a step-by-step deploy and verification checklist, see **[DOCKER_DEPLOYMENT_PLAN.md](DOCKER_DEPLOYMENT_PLAN.md)**.
+
 ### Prerequisites
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (includes Docker and Docker Compose)  

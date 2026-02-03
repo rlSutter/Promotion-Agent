@@ -188,6 +188,52 @@
             resize: vertical;
         }
         .hidden { display: none; }
+        .promo-card.archived {
+            border-color: #bbb;
+            background: #f0f0f0;
+        }
+        .archived-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        .archived-badge.published { background: #4CAF50; color: white; }
+        .archived-badge.skipped { background: #9e9e9e; color: white; }
+        .section-desc {
+            color: #666;
+            font-size: 14px;
+            margin: -10px 0 15px 0;
+        }
+        .archive-section .promo-card {
+            background: #f5f5f5;
+            border-color: #ddd;
+        }
+        .archive-section .promo-card .status-badge {
+            margin-left: 8px;
+        }
+        .recover-btn {
+            background: #2196F3;
+            color: white;
+        }
+        .recover-btn:hover { background: #0b7dda; }
+        .archive-card-header {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .collapsible-content {
+            margin-top: 10px;
+        }
+        .collapsible-content summary {
+            cursor: pointer;
+            color: #666;
+            font-size: 13px;
+            user-select: none;
+        }
     </style>
 </head>
 <body>
@@ -211,6 +257,12 @@
             <h2>📅 Weekly Tasks</h2>
             <div id="weekly-tasks"></div>
         </div>
+
+        <div class="section archive-section">
+            <h2>📦 Archive</h2>
+            <p class="section-desc">Items you skipped or marked published. Recover any to return it to the working list.</p>
+            <div id="archive-list"></div>
+        </div>
     </div>
 
     <script>
@@ -231,14 +283,16 @@
         function updateStatus() {
             const generated = new Date(dashboardData.generated_at);
             const pending = dashboardData.pending_promotions.length;
+            const archived = (dashboardData.archived_promotions || []).length;
             document.getElementById('status').textContent = 
-                `Last updated: ${generated.toLocaleString()} • ${pending} pending promotion${pending !== 1 ? 's' : ''}`;
+                `Last updated: ${generated.toLocaleString()} • ${pending} pending • ${archived} archived`;
         }
 
         function renderDashboard() {
             renderPromotions();
             renderCommentingTasks();
             renderWeeklyTasks();
+            renderArchive();
         }
 
         function renderPromotions() {
@@ -300,6 +354,76 @@
                     </div>
                 `;
             }).join('');
+        }
+
+        function renderArchive() {
+            const container = document.getElementById('archive-list');
+            const archived = dashboardData.archived_promotions || [];
+            if (archived.length === 0) {
+                container.innerHTML = '<div class="empty-state">No archived items. Skipped or published promotions will appear here.</div>';
+                return;
+            }
+            container.innerHTML = archived.map(promo => {
+                const statusLabel = promo.status === 'published' ? 'Published' : 'Skipped';
+                const statusClass = promo.status === 'published' ? 'published' : 'skipped';
+                return `
+                    <div class="promo-card archive-card" data-id="${promo.promotion_id}">
+                        <div class="archive-card-header">
+                            <div class="post-title">${escapeHtml(promo.post_title)}</div>
+                            <span class="platform-badge ${promo.platform}">${promo.platform.replace('_', ' ')}</span>
+                            <span class="archived-badge ${statusClass}">${statusLabel}</span>
+                        </div>
+                        <div class="label">Outward Sentence:</div>
+                        <div class="outward-sentence">${escapeHtml(promo.outward_sentence || '')}</div>
+                        <details class="collapsible-content">
+                            <summary>Show promotional post</summary>
+                            <div class="promotional-post archived-post-text" style="margin-top:8px;white-space:pre-wrap;">${escapeHtml(promo.promotional_post || '')}</div>
+                        </details>
+                        <div class="actions" style="margin-top:15px">
+                            <button class="recover-btn" onclick="recoverPromotion('${promo.promotion_id}')">
+                                ↩ Recover to working list
+                            </button>
+                            <button class="copy-btn" onclick="copyArchivedPost('${promo.promotion_id}')">📋 Copy</button>
+                        </div>
+                        <div class="timestamp">${promo.published_date ? 'Archived: ' + new Date(promo.published_date).toLocaleString() : 'Created: ' + new Date(promo.created_date).toLocaleString()}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
+        function copyArchivedPost(promoId) {
+            const card = document.querySelector(`.archive-card[data-id="${promoId}"]`);
+            const textEl = card && card.querySelector('.archived-post-text');
+            const content = textEl ? textEl.textContent : '';
+            navigator.clipboard.writeText(content).then(() => {
+                const btn = card && card.querySelector('.copy-btn');
+                if (btn) { btn.textContent = '✓ Copied!'; setTimeout(() => { btn.textContent = '📋 Copy'; }, 2000); }
+            });
+        }
+
+        function recoverPromotion(promoId) {
+            if (!confirm('Recover this promotion to the working list?')) return;
+            const card = document.querySelector(`.archive-card[data-id="${promoId}"]`);
+            if (card) {
+                const btn = card.querySelector('.recover-btn');
+                if (btn) { btn.disabled = true; btn.textContent = '… Recovering'; }
+            }
+            fetch(`/api/recover-promotion/${promoId}`, { method: 'POST' })
+                .then(res => res.ok ? res.json() : Promise.reject(res))
+                .then(() => loadDashboard())
+                .catch(err => {
+                    if (card) {
+                        const btn = card.querySelector('.recover-btn');
+                        if (btn) { btn.disabled = false; btn.textContent = '↩ Recover to working list'; }
+                    }
+                    alert(err.status ? `Server error ${err.status}. Check console.` : 'Could not reach server.');
+                });
         }
 
         function renderWeeklyTasks() {
@@ -365,29 +489,58 @@
         }
 
         function markAsPublished(promoId) {
-            if (confirm('Mark this promotion as published? This will remove it from the dashboard.')) {
-                // In production, this would call the agent's API
-                // For now, we'll just update the local view
-                fetch(`/api/mark-published/${promoId}`, {
-                    method: 'POST'
-                }).then(() => {
+            if (!confirm('Mark this promotion as published? It will be archived from the pending list.')) return;
+            const card = document.querySelector(`.promo-card[data-id="${promoId}"]`);
+            if (card) setCardUpdating(card, true);
+            fetch(`/api/mark-published/${promoId}`, { method: 'POST' })
+                .then(res => res.ok ? res.json() : Promise.reject(res))
+                .then(() => {
+                    if (card) archiveCard(card, 'Published');
                     loadDashboard();
-                }).catch(() => {
-                    alert('Could not connect to agent API. Manually remove from database if needed.');
+                })
+                .catch(err => {
+                    if (card) setCardUpdating(card, false);
+                    const msg = err.status ? `Server error ${err.status}. Check console.` : 'Could not reach server.';
+                    alert(msg);
+                    if (err.status) fetch(err.url).then(r => r.text()).then(t => console.error(t));
                 });
-            }
         }
 
         function skipPromotion(promoId) {
-            if (confirm('Skip this promotion? It will be marked as skipped.')) {
-                fetch(`/api/skip-promotion/${promoId}`, {
-                    method: 'POST'
-                }).then(() => {
+            if (!confirm('Skip this promotion? It will be archived as skipped.')) return;
+            const card = document.querySelector(`.promo-card[data-id="${promoId}"]`);
+            if (card) setCardUpdating(card, true);
+            fetch(`/api/skip-promotion/${promoId}`, { method: 'POST' })
+                .then(res => res.ok ? res.json() : Promise.reject(res))
+                .then(() => {
+                    if (card) archiveCard(card, 'Skipped');
                     loadDashboard();
-                }).catch(() => {
-                    alert('Could not connect to agent API. Manually update database if needed.');
+                })
+                .catch(err => {
+                    if (card) setCardUpdating(card, false);
+                    const msg = err.status ? `Server error ${err.status}. Check console.` : 'Could not reach server.';
+                    alert(msg);
+                    if (err.status) fetch(err.url).then(r => r.text()).then(t => console.error(t));
                 });
-            }
+        }
+
+        function setCardUpdating(card, updating) {
+            const buttons = card.querySelectorAll('.actions button');
+            buttons.forEach(btn => {
+                btn.disabled = updating;
+                if (updating && (btn.classList.contains('approve-btn') || btn.classList.contains('skip-btn')))
+                    btn.textContent = '… Updating';
+                else if (btn.classList.contains('approve-btn')) btn.textContent = '✓ Mark Published';
+                else if (btn.classList.contains('skip-btn')) btn.textContent = '✕ Skip';
+            });
+        }
+
+        function archiveCard(card, status) {
+            card.classList.add('archived');
+            card.dataset.archivedStatus = status;
+            const actions = card.querySelector('.actions');
+            if (actions) actions.innerHTML = `<span class="archived-badge ${status.toLowerCase()}">${status}</span>`;
+            card.style.opacity = '0.6';
         }
 
         function markTaskComplete(taskId) {

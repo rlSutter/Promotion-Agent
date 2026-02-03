@@ -25,7 +25,7 @@ HEALTHCHECK --interval=60s --timeout=10s --start-period=5s --retries=3 \
 # Use supervisor to run both agent and server
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Install supervisor
-RUN apt-get update && apt-get install -y supervisor && rm -rf /var/lib/apt/lists/*
+# Install supervisor and curl (for healthcheck)
+RUN apt-get update && apt-get install -y supervisor curl && rm -rf /var/lib/apt/lists/*
 
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

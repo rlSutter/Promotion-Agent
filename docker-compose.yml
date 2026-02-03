@@ -11,10 +11,10 @@ services:
       - SUBSTACK_URL=${SUBSTACK_URL}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - CHECK_INTERVAL_MINUTES=${CHECK_INTERVAL_MINUTES:-60}
+      # DB and dashboard JSON live in /app/data so one volume works (avoids "unable to open database file" when host file doesn't exist)
+      - PROMOTION_AGENT_DB=/app/data/promotion_agent.db
     volumes:
       - ./data:/app/data
-      - ./promotion_agent.db:/app/promotion_agent.db
-      - ./review_dashboard.json:/app/review_dashboard.json
     env_file:
       - .env
     healthcheck:
