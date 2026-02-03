@@ -255,6 +255,15 @@
         }
         .analytics-item .event-type { color: #555; text-transform: capitalize; }
         .analytics-item .count { font-weight: 700; color: #333; }
+        .substack-profile {
+            background: #e3f2fd;
+            padding: 16px 20px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+        .substack-profile a { color: #1976d2; font-weight: 600; }
+        .substack-profile .fetched { color: #666; font-size: 12px; margin-top: 8px; }
     </style>
 </head>
 <body>
@@ -347,6 +356,24 @@
                 .then(res => res.ok ? res.json() : Promise.reject(res))
                 .then(data => {
                     const container = document.getElementById('analytics-list');
+                    let html = '';
+                    const sub = data.substack_profile;
+                    if (sub) {
+                        const handle = escapeHtml(sub.identity_handle || 'Substack');
+                        const url = escapeHtml(sub.profile_url || '#');
+                        const followers = sub.follower_count != null ? sub.follower_count.toLocaleString() : '—';
+                        const freeSubs = sub.rough_num_free_subscribers != null ? sub.rough_num_free_subscribers.toLocaleString() : '—';
+                        const tier = sub.bestseller_tier ? escapeHtml(sub.bestseller_tier) : '';
+                        const leaderboard = sub.leaderboard_label ? escapeHtml(sub.leaderboard_label) : '';
+                        const fetched = sub.fetched_at ? new Date(sub.fetched_at).toLocaleString() : '';
+                        html += '<div class="substack-profile">';
+                        html += '<strong>Substack (Developer API)</strong> · <a href="' + url + '" target="_blank" rel="noopener">@' + handle + '</a><br>';
+                        html += 'Followers: ' + followers + ' · Free subscribers: ' + freeSubs;
+                        if (tier) html += ' · ' + tier;
+                        if (leaderboard) html += ' · ' + leaderboard;
+                        if (fetched) html += '<div class="fetched">Last fetched: ' + fetched + '</div>';
+                        html += '</div>';
+                    }
                     const a7 = (data.analytics && data.analytics.last_7_days) || {};
                     const a30 = (data.analytics && data.analytics.last_30_days) || {};
                     const eventLabels = {
@@ -360,16 +387,16 @@
                         link_click: 'View post link',
                     };
                     const allTypes = new Set([...Object.keys(a7), ...Object.keys(a30)]);
-                    if (allTypes.size === 0) {
-                        container.innerHTML = '<div class="empty-state">No events yet. Clicks and actions will appear here.</div>';
-                        return;
+                    if (allTypes.size > 0) {
+                        html += '<div class="analytics-grid">' + Array.from(allTypes).sort().map(et => {
+                            const label = eventLabels[et] || et.replace(/_/g, ' ');
+                            const c7 = a7[et] || 0;
+                            const c30 = a30[et] || 0;
+                            return `<div class="analytics-item"><span class="event-type">${escapeHtml(label)}</span><br><span class="count">7d: ${c7}</span> · <span class="count">30d: ${c30}</span></div>`;
+                        }).join('') + '</div>';
                     }
-                    container.innerHTML = '<div class="analytics-grid">' + Array.from(allTypes).sort().map(et => {
-                        const label = eventLabels[et] || et.replace(/_/g, ' ');
-                        const c7 = a7[et] || 0;
-                        const c30 = a30[et] || 0;
-                        return `<div class="analytics-item"><span class="event-type">${escapeHtml(label)}</span><br><span class="count">7d: ${c7}</span> · <span class="count">30d: ${c30}</span></div>`;
-                    }).join('') + '</div>';
+                    if (!html) html = '<div class="empty-state">No events yet. Set SUBSTACK_LINKEDIN_HANDLE in .env for Substack profile stats.</div>';
+                    container.innerHTML = html;
                 })
                 .catch(() => {
                     const container = document.getElementById('analytics-list');

@@ -117,6 +117,20 @@ def main():
         FOREIGN KEY (promotion_id) REFERENCES promotions(id),
         FOREIGN KEY (task_id) REFERENCES weekly_tasks(id)
     )""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS substack_profile (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fetched_at TEXT NOT NULL,
+        identity_handle TEXT,
+        profile_url TEXT,
+        follower_count INTEGER,
+        rough_num_free_subscribers INTEGER,
+        bestseller_tier TEXT,
+        leaderboard_rank INTEGER,
+        leaderboard_publication_name TEXT,
+        leaderboard_label TEXT,
+        leaderboard_ranking TEXT,
+        raw_json TEXT
+    )""")
     conn.commit()
     conn.close()
     print("Database created successfully.")

@@ -12,11 +12,13 @@ import sqlite3
 import hashlib
 from datetime import datetime, timedelta
 from pathlib import Path
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 import anthropic
 import feedparser
 import schedule
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 from dotenv import load_dotenv
 
 # Paths: use script directory so DB and files work from any cwd (Windows/OneDrive)
@@ -41,12 +43,16 @@ if "/publish" in _raw_substack or (_raw_substack.rstrip("/").endswith("substack.
     print(f"SUBSTACK_URL was a publish/dashboard URL; using RSS feed instead: {_raw_substack}")
 
 _db_path = os.getenv("PROMOTION_AGENT_DB") or str(_script_dir / "promotion_agent.db")
+_substack_api_key = (os.getenv("SUBSTACK_API_KEY") or "").strip()
+_substack_linkedin = (os.getenv("SUBSTACK_LINKEDIN_HANDLE") or "").strip()
 CONFIG = {
     "substack_url": _raw_substack,
     "anthropic_api_key": os.getenv("ANTHROPIC_API_KEY"),
     "db_path": _db_path,
     "review_dashboard_path": str(Path(_db_path).parent / "review_dashboard.json"),
     "check_interval_minutes": int(os.getenv("CHECK_INTERVAL_MINUTES", "60")),
+    "substack_api_key": _substack_api_key if _substack_api_key else None,
+    "substack_linkedin_handle": _substack_linkedin if _substack_linkedin else None,
 }
 
 # Platform routing rules based on keywords/topics
@@ -162,6 +168,24 @@ class PromotionAgent:
                 FOREIGN KEY (task_id) REFERENCES weekly_tasks(id)
             )
         """)
+
+        # Substack Developer API profile cache (follower count, subscribers, etc.)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS substack_profile (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                fetched_at TEXT NOT NULL,
+                identity_handle TEXT,
+                profile_url TEXT,
+                follower_count INTEGER,
+                rough_num_free_subscribers INTEGER,
+                bestseller_tier TEXT,
+                leaderboard_rank INTEGER,
+                leaderboard_publication_name TEXT,
+                leaderboard_label TEXT,
+                leaderboard_ranking TEXT,
+                raw_json TEXT
+            )
+        """)
         
         conn.commit()
         conn.close()
@@ -172,7 +196,67 @@ class PromotionAgent:
         if getattr(self, "_use_db_uri", False):
             return sqlite3.connect(self._db_uri, uri=True)
         return sqlite3.connect(self.db_path)
-    
+
+    def fetch_substack_profile(self) -> Optional[Dict[str, Any]]:
+        """
+        Fetch Substack profile stats from the Developer API (by LinkedIn handle).
+        https://support.substack.com/hc/en-us/articles/45099095296916
+        Posts are still retrieved via RSS; this returns profile-level stats only.
+        """
+        handle = CONFIG.get("substack_linkedin_handle")
+        if not handle:
+            return None
+        url = f"https://substack.com/profile/search/linkedin/{handle.strip()}"
+        try:
+            req = Request(url, method="GET")
+            req.add_header("User-Agent", "PromotionAgent/1.0")
+            api_key = CONFIG.get("substack_api_key")
+            if api_key:
+                req.add_header("Authorization", f"Bearer {api_key}")
+            with urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read().decode())
+        except (HTTPError, URLError, json.JSONDecodeError, OSError) as e:
+            print(f"[Substack API] Could not fetch profile: {e}", flush=True)
+            return None
+        results = data.get("results") or []
+        if not results:
+            print("[Substack API] No profile found for LinkedIn handle.", flush=True)
+            return None
+        profile = results[0]
+        ls = profile.get("leaderboardStatus") or {}
+        fetched_at = datetime.now().isoformat()
+        row = {
+            "fetched_at": fetched_at,
+            "identity_handle": profile.get("identityHandle"),
+            "profile_url": profile.get("profileUrl"),
+            "follower_count": profile.get("followerCount"),
+            "rough_num_free_subscribers": profile.get("roughNumFreeSubscribers"),
+            "bestseller_tier": profile.get("bestsellerTier"),
+            "leaderboard_rank": ls.get("rank"),
+            "leaderboard_publication_name": ls.get("publicationName"),
+            "leaderboard_label": ls.get("label"),
+            "leaderboard_ranking": ls.get("ranking"),
+            "raw_json": json.dumps(profile),
+        }
+        conn = self._db_connect()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO substack_profile (
+                fetched_at, identity_handle, profile_url, follower_count,
+                rough_num_free_subscribers, bestseller_tier, leaderboard_rank,
+                leaderboard_publication_name, leaderboard_label, leaderboard_ranking, raw_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            row["fetched_at"], row["identity_handle"], row["profile_url"],
+            row["follower_count"], row["rough_num_free_subscribers"], row["bestseller_tier"],
+            row["leaderboard_rank"], row["leaderboard_publication_name"],
+            row["leaderboard_label"], row["leaderboard_ranking"], row["raw_json"],
+        ))
+        conn.commit()
+        conn.close()
+        print(f"[Substack API] Profile stored: @{row['identity_handle']} — {row['follower_count'] or 0} followers, {row['rough_num_free_subscribers'] or 0} free subs", flush=True)
+        return row
+
     def check_for_new_posts(self):
         """Monitor Substack RSS feed for new posts"""
         print(f"[{datetime.now()}] Checking for new posts...")
@@ -579,6 +663,9 @@ Return the complete post text with links."""
         # Initial check
         self.check_for_new_posts()
         self.generate_review_dashboard()
+        if CONFIG.get("substack_linkedin_handle"):
+            schedule.every().day.at("06:00").do(self.fetch_substack_profile)
+            self.fetch_substack_profile()
         
         # Run forever
         while True:

@@ -89,6 +89,9 @@ If `.env` does not exist, it is created automatically from `.env.example` the fi
 ```
 SUBSTACK_URL=https://yoursubstack.substack.com/feed   # Use /feed, not /publish/home
 ANTHROPIC_API_KEY=sk-ant-your-key-here
+# Optional: Substack Developer API (profile stats). Add when Substack provides your API key.
+# SUBSTACK_API_KEY=
+# SUBSTACK_LINKEDIN_HANDLE=yourlinkedin   # e.g. johndoe from linkedin.com/in/johndoe
 ```
 
 3. Start the agent:
@@ -214,6 +217,13 @@ PLATFORM_ROUTING = {
 }
 ```
 
+### Substack Developer API (optional)
+
+The agent gets **posts** from your Substack RSS feed. For **profile statistics** (follower count, free subscribers, leaderboard), you can use the [Substack Developer API](https://support.substack.com/hc/en-us/articles/45099095296916-Substack-Developer-API). It is queried by your **LinkedIn handle** (e.g. `johndoe` from `linkedin.com/in/johndoe`). Add to `.env` when ready:
+
+- **SUBSTACK_LINKEDIN_HANDLE** – Your LinkedIn handle so the agent can fetch your Substack profile stats. When set, the agent fetches profile data daily and the dashboard shows followers and subscribers in the Analytics section.
+- **SUBSTACK_API_KEY** – Leave empty for now; add when Substack provides an API key (e.g. for authenticated requests). The code sends it as `Authorization: Bearer <key>` when set.
+
 ### Adjust Check Interval
 
 Change in `.env`:
@@ -235,10 +245,12 @@ Edit the prompt in `generate_promotional_post()` method in `agent.py`.
 
 SQLite database (`promotion_agent.db`) with tables:
 
-- **posts** - All discovered blog posts
+- **posts** - All discovered blog posts (from RSS)
 - **promotions** - Generated promotional content per post
 - **weekly_tasks** - On-ramp posts and weekly efforts
 - **activity_log** - Commenting suggestions and completed activities
+- **analytics_events** - Dashboard clicks and engagement
+- **substack_profile** - Cached Substack Developer API profile (followers, subscribers) when `SUBSTACK_LINKEDIN_HANDLE` is set
 
 ## Costs
 

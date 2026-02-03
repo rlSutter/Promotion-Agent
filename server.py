@@ -340,6 +340,33 @@ def stats():
             analytics_30d = dict(cursor.fetchall())
         except sqlite3.OperationalError:
             analytics_30d = {}
+
+        # Substack Developer API profile (latest fetch)
+        substack_profile = None
+        try:
+            cursor.execute("""
+                SELECT fetched_at, identity_handle, profile_url, follower_count,
+                       rough_num_free_subscribers, bestseller_tier, leaderboard_rank,
+                       leaderboard_publication_name, leaderboard_label, leaderboard_ranking
+                FROM substack_profile
+                ORDER BY fetched_at DESC LIMIT 1
+            """)
+            row = cursor.fetchone()
+            if row:
+                substack_profile = {
+                    "fetched_at": row[0],
+                    "identity_handle": row[1],
+                    "profile_url": row[2],
+                    "follower_count": row[3],
+                    "rough_num_free_subscribers": row[4],
+                    "bestseller_tier": row[5],
+                    "leaderboard_rank": row[6],
+                    "leaderboard_publication_name": row[7],
+                    "leaderboard_label": row[8],
+                    "leaderboard_ranking": row[9],
+                }
+        except sqlite3.OperationalError:
+            pass
     finally:
         conn.close()
 
@@ -351,6 +378,7 @@ def stats():
             "last_7_days": analytics_7d,
             "last_30_days": analytics_30d,
         },
+        "substack_profile": substack_profile,
     })
 
 
