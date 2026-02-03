@@ -185,6 +185,35 @@ def skip_promotion(promotion_id):
         return jsonify({"error": str(e), "status": "error"}), 500
 
 
+@app.route('/api/analytics/track', methods=['POST'])
+def analytics_track():
+    """Record an analytics event (click, engagement)."""
+    try:
+        data = request.get_json() or {}
+        event_type = (data.get("event_type") or "").strip()
+        if not event_type:
+            return jsonify({"error": "event_type required", "status": "error"}), 400
+        promotion_id = data.get("promotion_id")
+        task_id = data.get("task_id")
+        post_id = data.get("post_id")
+        platform = data.get("platform")
+        extra = data.get("extra")
+        if extra is not None and not isinstance(extra, str):
+            extra = json.dumps(extra) if extra else None
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO analytics_events (event_type, promotion_id, task_id, post_id, platform, extra)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (event_type, promotion_id, task_id, post_id, platform, extra))
+        conn.commit()
+        event_id = cursor.lastrowid
+        conn.close()
+        return jsonify({"status": "success", "event_id": event_id})
+    except sqlite3.OperationalError as e:
+        return jsonify({"error": str(e), "status": "error"}), 500
+
+
 @app.route('/api/recover-promotion/<int:promotion_id>', methods=['POST'])
 def recover_promotion(promotion_id):
     """Move a promotion from archive back to pending (recover to working list)."""
@@ -289,13 +318,39 @@ def stats():
             recent_activity = dict(cursor.fetchall())
         except sqlite3.OperationalError:
             recent_activity = {}
+
+        # Analytics: event counts (last 7 and 30 days)
+        try:
+            cursor.execute("""
+                SELECT event_type, COUNT(*)
+                FROM analytics_events
+                WHERE created_at >= datetime('now', '-7 days')
+                GROUP BY event_type
+            """)
+            analytics_7d = dict(cursor.fetchall())
+        except sqlite3.OperationalError:
+            analytics_7d = {}
+        try:
+            cursor.execute("""
+                SELECT event_type, COUNT(*)
+                FROM analytics_events
+                WHERE created_at >= datetime('now', '-30 days')
+                GROUP BY event_type
+            """)
+            analytics_30d = dict(cursor.fetchall())
+        except sqlite3.OperationalError:
+            analytics_30d = {}
     finally:
         conn.close()
 
     return jsonify({
         "total_posts": total_posts,
         "promotions": promo_stats,
-        "recent_activity": recent_activity
+        "recent_activity": recent_activity,
+        "analytics": {
+            "last_7_days": analytics_7d,
+            "last_30_days": analytics_30d,
+        },
     })
 
 

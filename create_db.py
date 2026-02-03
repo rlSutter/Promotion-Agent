@@ -105,6 +105,18 @@ def main():
     cur.execute("""CREATE TABLE IF NOT EXISTS promotions (id INTEGER PRIMARY KEY AUTOINCREMENT, post_id TEXT, platform TEXT, outward_sentence TEXT, promotional_post TEXT, status TEXT DEFAULT 'pending_review', created_date TEXT, published_date TEXT, FOREIGN KEY (post_id) REFERENCES posts(id))""")
     cur.execute("""CREATE TABLE IF NOT EXISTS weekly_tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, task_type TEXT, content TEXT, due_date TEXT, status TEXT DEFAULT 'pending', created_date TEXT)""")
     cur.execute("""CREATE TABLE IF NOT EXISTS activity_log (id INTEGER PRIMARY KEY AUTOINCREMENT, post_id TEXT, activity_type TEXT, details TEXT, completed_date TEXT)""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS analytics_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_type TEXT NOT NULL,
+        promotion_id INTEGER,
+        task_id INTEGER,
+        post_id TEXT,
+        platform TEXT,
+        extra TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (promotion_id) REFERENCES promotions(id),
+        FOREIGN KEY (task_id) REFERENCES weekly_tasks(id)
+    )""")
     conn.commit()
     conn.close()
     print("Database created successfully.")

@@ -234,6 +234,27 @@
             font-size: 13px;
             user-select: none;
         }
+        .view-post-link {
+            font-size: 13px;
+            color: #2196F3;
+            text-decoration: none;
+            margin-left: 8px;
+        }
+        .view-post-link:hover { text-decoration: underline; }
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .analytics-item {
+            background: #f5f5f5;
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        .analytics-item .event-type { color: #555; text-transform: capitalize; }
+        .analytics-item .count { font-weight: 700; color: #333; }
     </style>
 </head>
 <body>
@@ -242,6 +263,12 @@
             <h1>🚀 Promotion Review Dashboard</h1>
             <div class="status" id="status">Loading...</div>
         </header>
+
+        <div class="section" id="analytics-section">
+            <h2>📊 Analytics (clicks & engagement)</h2>
+            <p class="section-desc">Event counts from dashboard usage (last 7 and 30 days).</p>
+            <div id="analytics-list"></div>
+        </div>
 
         <div class="section">
             <h2>📝 Pending Promotions</h2>
@@ -268,6 +295,25 @@
     <script>
         let dashboardData = null;
 
+        function trackEvent(eventType, data) {
+            const payload = Object.assign({ event_type: eventType }, data || {});
+            fetch('/api/analytics/track', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            }).catch(() => {});
+        }
+
+        function trackLinkClick(linkEl) {
+            const d = linkEl.dataset;
+            trackEvent('link_click', {
+                promotion_id: d.promotionId ? parseInt(d.promotionId, 10) : undefined,
+                post_id: d.postId || undefined,
+                platform: d.platform || undefined,
+                extra: d.url || undefined,
+            });
+        }
+
         async function loadDashboard() {
             try {
                 const response = await fetch('review_dashboard.json');
@@ -293,6 +339,42 @@
             renderCommentingTasks();
             renderWeeklyTasks();
             renderArchive();
+            loadAnalytics();
+        }
+
+        function loadAnalytics() {
+            fetch('/api/stats')
+                .then(res => res.ok ? res.json() : Promise.reject(res))
+                .then(data => {
+                    const container = document.getElementById('analytics-list');
+                    const a7 = (data.analytics && data.analytics.last_7_days) || {};
+                    const a30 = (data.analytics && data.analytics.last_30_days) || {};
+                    const eventLabels = {
+                        copy_post: 'Copy post',
+                        mark_published: 'Mark published',
+                        skip: 'Skip',
+                        recover: 'Recover',
+                        copy_archive: 'Copy (archive)',
+                        copy_task: 'Copy task',
+                        task_complete: 'Task complete',
+                        link_click: 'View post link',
+                    };
+                    const allTypes = new Set([...Object.keys(a7), ...Object.keys(a30)]);
+                    if (allTypes.size === 0) {
+                        container.innerHTML = '<div class="empty-state">No events yet. Clicks and actions will appear here.</div>';
+                        return;
+                    }
+                    container.innerHTML = '<div class="analytics-grid">' + Array.from(allTypes).sort().map(et => {
+                        const label = eventLabels[et] || et.replace(/_/g, ' ');
+                        const c7 = a7[et] || 0;
+                        const c30 = a30[et] || 0;
+                        return `<div class="analytics-item"><span class="event-type">${escapeHtml(label)}</span><br><span class="count">7d: ${c7}</span> · <span class="count">30d: ${c30}</span></div>`;
+                    }).join('') + '</div>';
+                })
+                .catch(() => {
+                    const container = document.getElementById('analytics-list');
+                    if (container) container.innerHTML = '<div class="empty-state">Could not load analytics.</div>';
+                });
         }
 
         function renderPromotions() {
@@ -305,9 +387,10 @@
             }
 
             container.innerHTML = promotions.map(promo => `
-                <div class="promo-card" data-id="${promo.promotion_id}">
+                <div class="promo-card" data-id="${promo.promotion_id}" data-post-id="${escapeHtml(promo.post_id || '')}" data-platform="${escapeHtml(promo.platform || '')}">
                     <div class="post-title">${promo.post_title}</div>
                     <span class="platform-badge ${promo.platform}">${promo.platform.replace('_', ' ')}</span>
+                    ${promo.post_url ? `<a href="${escapeHtml(promo.post_url)}" target="_blank" rel="noopener" class="view-post-link" data-promotion-id="${promo.promotion_id}" data-post-id="${escapeHtml(promo.post_id || '')}" data-platform="${escapeHtml(promo.platform || '')}" data-url="${escapeHtml((promo.post_url || '').substring(0, 200))}" onclick="trackLinkClick(this)">View post ↗</a>` : ''}
                     
                     <div class="label">Outward Sentence:</div>
                     <div class="outward-sentence">${promo.outward_sentence}</div>
@@ -398,6 +481,9 @@
         }
 
         function copyArchivedPost(promoId) {
+            const archived = (dashboardData && dashboardData.archived_promotions) || [];
+            const promo = archived.find(p => p.promotion_id == promoId);
+            trackEvent('copy_archive', { promotion_id: parseInt(promoId, 10), post_id: promo?.post_id, platform: promo?.platform });
             const card = document.querySelector(`.archive-card[data-id="${promoId}"]`);
             const textEl = card && card.querySelector('.archived-post-text');
             const content = textEl ? textEl.textContent : '';
@@ -409,6 +495,9 @@
 
         function recoverPromotion(promoId) {
             if (!confirm('Recover this promotion to the working list?')) return;
+            const archived = (dashboardData && dashboardData.archived_promotions) || [];
+            const promo = archived.find(p => p.promotion_id == promoId);
+            trackEvent('recover', { promotion_id: parseInt(promoId, 10), post_id: promo?.post_id, platform: promo?.platform });
             const card = document.querySelector(`.archive-card[data-id="${promoId}"]`);
             if (card) {
                 const btn = card.querySelector('.recover-btn');
@@ -462,7 +551,10 @@
         function copyToClipboard(promoId) {
             const editElem = document.getElementById(`edit-${promoId}`);
             const text = editElem.value;
-            
+            const card = document.querySelector(`.promo-card[data-id="${promoId}"]`);
+            const postId = card ? card.dataset.postId : '';
+            const platform = card ? card.dataset.platform : '';
+            trackEvent('copy_post', { promotion_id: parseInt(promoId, 10), post_id: postId || undefined, platform: platform || undefined });
             navigator.clipboard.writeText(text).then(() => {
                 const btn = event.target;
                 const originalText = btn.textContent;
@@ -476,6 +568,7 @@
         }
 
         function copyTaskContent(taskId, content) {
+            trackEvent('copy_task', { task_id: parseInt(taskId, 10) });
             navigator.clipboard.writeText(content).then(() => {
                 const btn = event.target;
                 const originalText = btn.textContent;
@@ -490,6 +583,8 @@
 
         function markAsPublished(promoId) {
             if (!confirm('Mark this promotion as published? It will be archived from the pending list.')) return;
+            const promo = dashboardData && dashboardData.pending_promotions.find(p => p.promotion_id == promoId);
+            trackEvent('mark_published', { promotion_id: parseInt(promoId, 10), post_id: promo?.post_id, platform: promo?.platform });
             const card = document.querySelector(`.promo-card[data-id="${promoId}"]`);
             if (card) setCardUpdating(card, true);
             fetch(`/api/mark-published/${promoId}`, { method: 'POST' })
@@ -508,6 +603,8 @@
 
         function skipPromotion(promoId) {
             if (!confirm('Skip this promotion? It will be archived as skipped.')) return;
+            const promo = dashboardData && dashboardData.pending_promotions.find(p => p.promotion_id == promoId);
+            trackEvent('skip', { promotion_id: parseInt(promoId, 10), post_id: promo?.post_id, platform: promo?.platform });
             const card = document.querySelector(`.promo-card[data-id="${promoId}"]`);
             if (card) setCardUpdating(card, true);
             fetch(`/api/skip-promotion/${promoId}`, { method: 'POST' })
@@ -545,6 +642,7 @@
 
         function markTaskComplete(taskId) {
             if (confirm('Mark this task as complete?')) {
+                trackEvent('task_complete', { task_id: parseInt(taskId, 10) });
                 fetch(`/api/complete-task/${taskId}`, {
                     method: 'POST'
                 }).then(() => {

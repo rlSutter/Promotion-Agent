@@ -146,6 +146,22 @@ class PromotionAgent:
                 completed_date TEXT
             )
         """)
+
+        # Analytics (clicks, engagement)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS analytics_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_type TEXT NOT NULL,
+                promotion_id INTEGER,
+                task_id INTEGER,
+                post_id TEXT,
+                platform TEXT,
+                extra TEXT,
+                created_at TEXT DEFAULT (datetime('now')),
+                FOREIGN KEY (promotion_id) REFERENCES promotions(id),
+                FOREIGN KEY (task_id) REFERENCES weekly_tasks(id)
+            )
+        """)
         
         conn.commit()
         conn.close()
