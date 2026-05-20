@@ -77,6 +77,22 @@ For the post "The Likability Tax on Technical Leadership", consider commenting o
    work—not as a complaint but as an operational constraint that affects velocity.
 ```
 
+### Step 5: Article Inventory Entry
+
+**Auto-generated inventory metadata (added immediately after processing):**
+
+```
+Title:          The Likability Tax on Technical Leadership
+Subtitle:       Why managing others' comfort is the real hidden cost of leadership
+URL:            https://yoursubstack.com/p/likability-tax
+Published:      January 15, 2025
+Topics:         leadership, women in tech, cognitive load, decision-making, technical leadership
+Core Mechanism: Managing others' emotional comfort compounds into a decision-making tax
+                that slows technical leaders and optimizes for consensus over outcomes
+```
+
+This entry is stored in the database and appended to `article_inventory.md` automatically. No extra steps needed.
+
 ## Weekly Task Example
 
 Every Monday, the agent generates:
@@ -104,11 +120,11 @@ intersect in technical work.
 
 ## Dashboard Preview
 
-In the review dashboard, you'd see:
+In the review dashboard, you'd see six collapsible sections. The promotions section looks like:
 
 ```
 ┌─────────────────────────────────────────────────┐
-│ 📝 Pending Promotions                           │
+│ 📝 Pending Promotions                        ▾  │
 ├─────────────────────────────────────────────────┤
 │                                                 │
 │ The Likability Tax on Technical Leadership      │
@@ -135,6 +151,61 @@ In the review dashboard, you'd see:
 └─────────────────────────────────────────────────┘
 ```
 
+The Article Inventory section looks like:
+
+```
+┌─────────────────────────────────────────────────┐
+│ 📚 Article Inventory                         ▾  │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│ [Search title/subtitle/summary...] [Topic...]   │
+│ [Year ▾] [✕ Clear]                              │
+│                                                 │
+│ Showing 51 articles                             │
+│                                                 │
+│ [🔨 Build / Refresh Inventory] [⬇ Re-export Md]│
+│                                                 │
+│ The Likability Tax on Technical Leadership      │
+│ Why managing others' comfort is the real...     │
+│ leadership · women in tech · cognitive load     │
+│ Managing others' emotional comfort compounds... │
+│ Jan 15, 2025                                    │
+│                                                 │
+│ Self-Organizing Teams Still Need an OS          │
+│ ...                                             │
+└─────────────────────────────────────────────────┘
+```
+
+## Article Inventory Example
+
+`article_inventory.md` (exported to project folder):
+
+```markdown
+# Article Inventory
+
+*51 articles · Last updated: 2025-01-15*
+
+---
+
+## [The Likability Tax on Technical Leadership](https://yoursubstack.com/p/likability-tax)
+
+**Subtitle:** Why managing others' comfort is the real hidden cost of leadership  
+**Published:** January 15, 2025  
+**Topics:** leadership, women in tech, cognitive load, decision-making, technical leadership  
+**Core Mechanism:** Managing others' emotional comfort compounds into a decision-making tax that slows technical leaders and optimizes for consensus over outcomes
+
+---
+
+## [Self-Organizing Teams Still Need an Operating System](https://yoursubstack.com/p/operating-system)
+
+**Subtitle:** Autonomy without structure creates chaos, not agility  
+**Published:** December 5, 2024  
+**Topics:** teams, autonomy, systems, engineering management  
+**Core Mechanism:** Self-organization requires explicit operating agreements; without them, autonomy devolves into ambiguity and the loudest voice wins
+
+---
+```
+
 ## Your Workflow
 
 1. **Agent detects post** → Processes automatically
@@ -145,6 +216,7 @@ In the review dashboard, you'd see:
 6. **Paste and post** → Manually post to LinkedIn
 7. **Mark as published** → Track in dashboard
 8. **Do 10 min commenting** → Follow suggestions
+9. **Article auto-added to inventory** → No action needed
 
 Total time: ~15 minutes per post
 
@@ -156,6 +228,7 @@ Total time: ~15 minutes per post
 - ❌ Post same content to all platforms
 - ❌ Forget to comment elsewhere
 - ❌ Never create on-ramp posts
+- ❌ No searchable record of your article catalog
 - ⏱️ 45+ minutes, often abandoned
 
 ### After (Agent-Assisted)
@@ -164,6 +237,7 @@ Total time: ~15 minutes per post
 - ✅ Post already written in right style
 - ✅ Commenting tasks already suggested
 - ✅ Weekly on-ramp posts auto-generated
+- ✅ Full article inventory maintained automatically
 - ⏱️ 15 minutes, consistent execution
 
 ## Cost Example
@@ -172,15 +246,16 @@ For 2 posts per week:
 
 **API costs:**
 - 2 posts × 4 weeks = 8 posts/month
-- ~$0.03 per post = $0.24/month
+- ~$0.03–0.05 per post ≈ $0.32–0.40/month
 - Weekly tasks = ~$0.10/month
-- **Total: ~$0.35/month**
+- One-time inventory build: ~$0.05–0.15
+- **Total recurring: ~$2–5/month at 2–3 posts/week**
 
 **Time saved:**
 - 30 minutes per post × 8 posts = 4 hours/month
 - At $50/hour equivalent = $200 value
 
-**ROI: 571x**
+**ROI: 50x+**
 
 ## Notes
 
@@ -188,4 +263,6 @@ For 2 posts per week:
 - All content reviewed before publishing
 - Edit anything inline in dashboard
 - Platform selection can be overridden
-- Agent learns from your edits over time
+- Article inventory is built automatically — run the one-time build pass for historical articles
+- Inventory build is idempotent (safe to re-run; skips existing articles)
+- `article_inventory.md` regenerated after every update

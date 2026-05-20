@@ -1,207 +1,174 @@
-# Quick Reference Card
+# Quick Reference
 
-Keep this handy for your daily workflow.
+A cheat sheet for daily use once the agent is running.
+
+---
+
+## Dashboard
+
+| Deployment | URL |
+|---|---|
+| Local (Docker or Python) | `http://localhost:5000` |
+| Railway | `https://your-app.railway.app` |
+| Render | `https://your-app.onrender.com` |
+| Fly.io | `https://your-app.fly.dev` |
+
+If `DASHBOARD_USERNAME` and `DASHBOARD_PASSWORD` are set in `.env`, your browser will prompt for credentials on first visit.
+
+---
+
+## First-Time Setup
+
+```bash
+# 1. Copy config template
+cp .env.example .env
+# Edit .env — set SUBSTACK_URL, ANTHROPIC_API_KEY, and (for cloud) DASHBOARD_USERNAME/PASSWORD
+
+# 2. Start (Docker)
+docker-compose up -d
+
+# 3. Build article inventory (one-time)
+# Via dashboard: click "🔨 Build / Refresh Inventory"
+# Or via CLI:
+docker compose exec promotion-agent python agent.py --build-inventory
+```
+
+---
 
 ## Daily Workflow (15 minutes)
 
-### When You Publish
-
 ```
-1. Publish to Substack (as usual)
-2. Wait ~1 hour (or restart agent for immediate processing)
-3. Check dashboard: http://localhost:5000
-4. Review → Edit (if needed) → Copy → Post
-5. Mark as published
-6. Do 10-min commenting (follow suggestions)
-7. Done!
+1. Publish to Substack as usual
+2. Wait ~1 hour (agent checks hourly; restarts trigger an immediate check)
+3. Open dashboard
+4. Review → Edit if needed → Copy → Paste to platform → Mark published
+5. Do 10-min commenting (follow suggestions in Commenting Tasks)
 ```
 
-## Dashboard URL
+New articles are **automatically added to the inventory** — nothing extra to do.
 
-**Local:**
-```
-http://localhost:5000
-```
+---
 
-**Cloud (your deployment):**
-```
-https://your-app.railway.app
-https://your-app.onrender.com
-https://your-app.fly.dev
-```
+## Dashboard Sections
 
-## Common Commands
+All sections are **collapsible** — click any heading. State saves across page loads.
 
-### Docker (Local)
+| Section | Purpose |
+|---|---|
+| 📊 Analytics | Copy/publish/skip activity; Substack profile stats (if configured) |
+| 📝 Pending Promotions | Review and approve drafted posts |
+| 💬 Commenting Tasks | Where to comment and what angle to take |
+| 📅 Weekly Tasks | Monday on-ramp posts for new readers |
+| 📚 Article Inventory | Searchable catalog of every published article |
+| 📦 Archive | Published/skipped items; recover any item to pending |
+
+---
+
+## Configuration
+
+All settings live in `.env`. Key variables:
+
+| Variable | Required | Notes |
+|---|---|---|
+| `SUBSTACK_URL` | ✅ always | Must end in `/feed` |
+| `ANTHROPIC_API_KEY` | ✅ always | From console.anthropic.com |
+| `DASHBOARD_USERNAME` | ✅ for cloud | Blank = no auth (local only) |
+| `DASHBOARD_PASSWORD` | ✅ for cloud | Blank = no auth (local only) |
+| `ANTHROPIC_MODEL` | optional | Default: `claude-sonnet-4-20250514`. See README AI Configuration section. |
+| `CHECK_INTERVAL_MINUTES` | optional | Default: 60 |
+| `SUBSTACK_LINKEDIN_HANDLE` | optional | Enables profile stats in Analytics |
+
+After changing `.env`, restart the agent: `docker-compose restart`
+
+---
+
+## Docker Commands
 
 ```bash
-# Start agent
-docker-compose up -d
-
-# Stop agent
-docker-compose down
-
-# View logs
-docker-compose logs -f
-
-# Restart agent
-docker-compose restart
-
-# Check status
-docker-compose ps
-
-# Update after code changes
-docker-compose up -d --build
+docker-compose up -d              # Start in background
+docker-compose down               # Stop
+docker-compose restart            # Restart all services
+docker-compose logs -f            # Follow all logs
+docker-compose logs -f promotion-agent  # Follow agent + server logs
+docker-compose ps                 # Check container status
+docker-compose up -d --build      # Rebuild image after code changes
 ```
 
-### Database Queries
+---
 
-**Windows / any platform (no sqlite3 CLI needed):**
-```powershell
-python db_shell.py
-```
-Then type SQL (e.g. the queries below). Type `.quit` to exit.
-
-**Mac/Linux (if sqlite3 CLI is installed):**
-```bash
-sqlite3 promotion_agent.db
-```
-
-**Example queries:**
-```sql
--- Pending promotions
-SELECT title, platform, created_date 
-FROM promotions p 
-JOIN posts ON p.post_id = posts.id 
-WHERE p.status = 'pending_review';
-
--- All posts
-SELECT title, published_date, status FROM posts ORDER BY published_date DESC;
-
--- Count by status
-SELECT status, COUNT(*) FROM promotions GROUP BY status;
-```
-
-### Manual Triggers
+## Manual Triggers
 
 ```bash
-# Force check now (Docker)
-docker-compose exec promotion-agent python -c "from agent import PromotionAgent; PromotionAgent().check_for_new_posts()"
+# Force RSS check right now
+docker compose exec promotion-agent python -c \
+  "from agent import PromotionAgent; PromotionAgent().check_for_new_posts()"
 
-# Regenerate dashboard
-docker-compose exec promotion-agent python -c "from agent import PromotionAgent; PromotionAgent().generate_review_dashboard()"
+# Regenerate dashboard JSON
+docker compose exec promotion-agent python -c \
+  "from agent import PromotionAgent; PromotionAgent().generate_review_dashboard()"
 
-# Generate weekly on-ramp
-docker-compose exec promotion-agent python -c "from agent import PromotionAgent; PromotionAgent().generate_weekly_onramp_post()"
+# Generate weekly on-ramp post
+docker compose exec promotion-agent python -c \
+  "from agent import PromotionAgent; PromotionAgent().generate_weekly_onramp_post()"
+
+# Build / refresh article inventory
+docker compose exec promotion-agent python agent.py --build-inventory
+
+# Re-export article_inventory.md (no API calls)
+docker compose exec promotion-agent python -c \
+  "from agent import PromotionAgent; PromotionAgent().export_inventory_to_markdown()"
 ```
 
-## Platform Posting Guide
+---
 
-### LinkedIn
+## Article Inventory
 
-```
-1. Copy from dashboard
-2. Go to LinkedIn
-3. Click "Start a post"
-4. Paste content
-5. Post
-6. Return to dashboard → Mark published
-```
-
-### Substack Notes
-
-```
-1. Copy from dashboard
-2. Go to Substack
-3. Click "Notes" in left sidebar
-4. Click "New note"
-5. Paste content
-6. Post
-7. Return to dashboard → Mark published
-```
-
-### Bluesky
-
-```
-1. Copy from dashboard
-2. Go to Bluesky
-3. Click "What's up?"
-4. Paste content
-5. Post
-6. Return to dashboard → Mark published
-```
-
-## Commenting Workflow (10 min/day)
-
-```
-1. Check "Commenting Tasks" section in dashboard
-2. Open Substack/LinkedIn/Bluesky
-3. Search for relevant posts (use suggestions as guide)
-4. Leave 2-3 thoughtful comments
-5. Add value, don't promote
-6. Done!
-```
-
-## Weekly Tasks (Mondays)
-
-```
-1. Check dashboard for weekly on-ramp post
-2. Review the 3 suggested posts
-3. Edit if needed
-4. Copy to Substack Notes or main platform
-5. Post
-6. Mark as complete
-```
-
-## Troubleshooting Quick Fixes
-
-### Agent not detecting posts
+### First-time build
 ```bash
-# Check RSS feed works
-curl https://yoursubstack.substack.com/feed
-
-# Restart agent
-docker-compose restart
-
-# Check logs
-docker-compose logs agent
+# Dashboard button: "🔨 Build / Refresh Inventory"
+# Or:
+docker compose exec promotion-agent python agent.py --build-inventory
 ```
+~$0.05–0.15 one-time cost. Idempotent — re-running skips existing articles. New articles are added automatically going forward.
 
-### Dashboard empty
+### Searching
+In the Article Inventory section of the dashboard:
+- **Keyword** — searches title, subtitle, and core mechanism summary; matched text is highlighted
+- **Topic** — filter by topic tag
+- **Year** — filter by publication year
+- **✕ Clear** — reset all filters
+
+### Re-export Markdown
 ```bash
-# Wait 1 hour OR trigger manually
-docker-compose exec promotion-agent python -c "from agent import PromotionAgent; PromotionAgent().check_for_new_posts(); PromotionAgent().generate_review_dashboard()"
+# Dashboard button: "⬇ Re-export Markdown"
+# Or:
+docker compose exec promotion-agent python -c \
+  "from agent import PromotionAgent; PromotionAgent().export_inventory_to_markdown()"
 ```
+Writes `article_inventory.md` to the project folder.
 
-### Can't access dashboard
-```bash
-# Check server is running
-docker-compose ps
-
-# Check port
-curl http://localhost:5000/api/stats
-
-# Restart server
-docker-compose restart server
-```
-
-### Database locked
-```bash
-# Stop everything
-docker-compose down
-
-# Start again
-docker-compose up -d
-```
+---
 
 ## API Endpoints
 
 ```bash
-# Get stats
+# Health / stats
 curl http://localhost:5000/api/stats
 
-# Get dashboard data
+# Dashboard data
 curl http://localhost:5000/review_dashboard.json
+
+# Article inventory
+curl http://localhost:5000/api/inventory
+
+# Trigger inventory build (runs in background)
+curl -X POST http://localhost:5000/api/inventory/build
+
+# Check build status
+curl http://localhost:5000/api/inventory/status
+
+# Re-export article_inventory.md
+curl -X POST http://localhost:5000/api/inventory/export
 
 # Mark promotion published (replace 123 with ID)
 curl -X POST http://localhost:5000/api/mark-published/123
@@ -209,121 +176,121 @@ curl -X POST http://localhost:5000/api/mark-published/123
 # Skip promotion
 curl -X POST http://localhost:5000/api/skip-promotion/123
 
-# Complete task
+# Complete weekly task
 curl -X POST http://localhost:5000/api/complete-task/123
 ```
 
-## File Locations
-
-```
-promotion_agent.db          # Database (all state)
-review_dashboard.json       # Dashboard data (regenerated hourly)
-.env                       # Your config (secrets!)
-docker-compose.yml         # Docker config
-```
-
-## Updating Substack URL
-
-```bash
-# Edit .env file
-nano .env
-
-# Change SUBSTACK_URL line
-SUBSTACK_URL=https://new-url.substack.com/feed
-
-# Restart
-docker-compose restart
-```
-
-## Changing Check Interval
-
-```bash
-# Edit .env
-CHECK_INTERVAL_MINUTES=30
-
-# Restart
-docker-compose restart
-```
-
-## Backup Your Data
-
-```bash
-# Backup database
-cp promotion_agent.db promotion_agent_backup_$(date +%Y%m%d).db
-
-# Restore from backup
-cp promotion_agent_backup_20250115.db promotion_agent.db
-docker-compose restart
-```
-
-## Monitoring
-
-### Check if it's working
-
-```bash
-# Should show running containers
-docker-compose ps
-
-# Should show recent activity
-docker-compose logs --tail=50 agent
-
-# Should return JSON with stats
-curl http://localhost:5000/api/stats
-```
-
-### Health check
-
-```bash
-# Everything OK if all pass:
-✓ Agent container running
-✓ Server container running  
-✓ Dashboard loads in browser
-✓ Database file exists
-✓ API stats returns data
-```
-
-## Cost Tracking
-
-```bash
-# Rough estimate per month
-Posts per week: ___
-Posts per month: ___ × 4 = ___
-API cost per post: $0.03
-Monthly API cost: ___ × $0.03 = $___
-
-# Add infrastructure
-Railway/Render/Fly: $0-7/month
-Total: $___/month
-```
-
-## Support Checklist
-
-Before asking for help:
-
-- [ ] Checked logs: `docker-compose logs`
-- [ ] Verified .env file exists and has correct values
-- [ ] Tested RSS feed: `curl https://yoursubstack.substack.com/feed`
-- [ ] Restarted agent: `docker-compose restart`
-- [ ] Checked database exists: `ls -lh promotion_agent.db`
-- [ ] Verified dashboard loads: open `http://localhost:5000`
-
-## Keyboard Shortcuts
-
-In dashboard (browser):
-- `Ctrl/Cmd + F` - Search for post title
-- `Ctrl/Cmd + R` - Refresh dashboard
-- `Ctrl/Cmd + C` - Copy selected text
-
-## Browser Bookmarks to Add
-
-- [ ] http://localhost:5000 (Dashboard)
-- [ ] https://yoursubstack.substack.com/publish (Write)
-- [ ] https://console.anthropic.com/ (API usage)
-- [ ] https://linkedin.com (Post)
-- [ ] https://yoursubstack.substack.com/notes (Notes)
+If auth is enabled, add credentials: `curl -u admin:password http://localhost:5000/api/stats`
 
 ---
 
-**Print this page and keep it by your desk!**
+## Database Queries
 
-Or save to: `/promotion-agent-reference.md`
+```bash
+# Interactive SQL shell (no sqlite3 CLI needed)
+python db_shell.py
+# Type .quit to exit
+```
+
+```sql
+-- Pending promotions
+SELECT posts.title, p.platform, p.created_date
+FROM promotions p JOIN posts ON p.post_id = posts.id
+WHERE p.status = 'pending_review';
+
+-- All posts discovered
+SELECT title, published_date, status FROM posts ORDER BY published_date DESC;
+
+-- Promotion counts by status
+SELECT status, COUNT(*) FROM promotions GROUP BY status;
+
+-- Article inventory
+SELECT title, topics, core_mechanism FROM article_inventory ORDER BY published_date DESC;
+
+-- Inventory count
+SELECT COUNT(*) FROM article_inventory;
+```
+
+---
+
+## Platform Posting Steps
+
+**LinkedIn:** Start a post → paste → post → return to dashboard → Mark published
+
+**Substack Notes:** Notes (left sidebar) → New note → paste → post → Mark published
+
+**Bluesky:** "What's up?" → paste → post → Mark published
+
+---
+
+## Troubleshooting Quick Fixes
+
+**No pending promotions after publishing**
+```bash
+# Trigger check manually
+docker compose exec promotion-agent python -c \
+  "from agent import PromotionAgent; PromotionAgent().check_for_new_posts()"
+# Then refresh dashboard
+```
+
+**Can't reach dashboard**
+```bash
+docker-compose ps                        # Is container running?
+curl http://localhost:5000/api/stats     # Does API respond?
+docker-compose logs --tail=30            # Any errors?
+```
+
+**Database locked or "unable to open database file"**
+```bash
+docker-compose down && docker-compose up -d   # Full restart
+# On Windows/OneDrive: right-click project folder → "Always keep on this device"
+```
+
+**Forgot dashboard password**
+- Open `.env`, find `DASHBOARD_PASSWORD`, reset it to a new value, then `docker-compose restart`
+
+**Inventory build fails**
+```bash
+# Check logs
+docker compose logs promotion-agent
+# Verify your real Substack URL is set (not the placeholder)
+# Check API key has credits at console.anthropic.com
+# Retry — the build is idempotent
+docker compose exec promotion-agent python agent.py --build-inventory
+```
+
+---
+
+## Key Files
+
+```
+.env                   Your config (never commit this)
+promotion_agent.db     SQLite database
+review_dashboard.json  Dashboard data (regenerated hourly)
+article_inventory.md   Exported inventory (regenerated on updates)
+```
+
+---
+
+## Cost Estimate
+
+```
+Posts per week × 4 = posts per month
+Posts per month × $0.04 average ≈ monthly API cost
+
+Example: 2 posts/week → 8/month → ~$0.32/month API
+Add cloud hosting: $0 (free tier) to $7/month (paid tier)
+```
+
+---
+
+## Health Checklist
+
+```
+✓ docker-compose ps shows container "Up"
+✓ http://localhost:5000 loads the dashboard
+✓ /api/stats returns JSON
+✓ Logs show "Checking for new posts" with no crash loop
+✓ Article inventory has entries (after build)
+✓ New post appears in Pending Promotions within 1 hour of publishing
+```

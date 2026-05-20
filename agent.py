@@ -48,6 +48,7 @@ _substack_linkedin = (os.getenv("SUBSTACK_LINKEDIN_HANDLE") or "").strip()
 CONFIG = {
     "substack_url": _raw_substack,
     "anthropic_api_key": os.getenv("ANTHROPIC_API_KEY"),
+    "anthropic_model": os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514"),
     "db_path": _db_path,
     "review_dashboard_path": str(Path(_db_path).parent / "review_dashboard.json"),
     "check_interval_minutes": int(os.getenv("CHECK_INTERVAL_MINUTES", "60")),
@@ -186,7 +187,21 @@ class PromotionAgent:
                 raw_json TEXT
             )
         """)
-        
+
+        # Article inventory (all published posts with extracted metadata)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS article_inventory (
+                id TEXT PRIMARY KEY,
+                title TEXT,
+                subtitle TEXT,
+                url TEXT,
+                published_date TEXT,
+                topics TEXT,
+                core_mechanism TEXT,
+                added_date TEXT
+            )
+        """)
+
         conn.commit()
         conn.close()
         print(f"[DB] Database initialized at: {self.db_path}")
@@ -324,7 +339,7 @@ The sentence should be the "spine" of the post, not a teaser. It should make a c
 Return ONLY the sentence(s), nothing else."""
 
         message = self.anthropic_client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model=CONFIG["anthropic_model"],
             max_tokens=200,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -384,7 +399,7 @@ Important constraints:
 Return ONLY the promotional post text, including the link at the end ({url})."""
 
         message = self.anthropic_client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model=CONFIG["anthropic_model"],
             max_tokens=500,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -441,6 +456,13 @@ Return ONLY the promotional post text, including the link at the end ({url})."""
         # Generate ecosystem commenting suggestions
         self.generate_commenting_tasks(post["id"], post["title"], platform)
 
+        # Add to article inventory
+        print("  → Adding to article inventory...")
+        self.add_article_to_inventory(
+            post["id"], post["title"], post["url"],
+            post["published_date"], "", post["content"]
+        )
+
     def generate_commenting_tasks(self, post_id: str, title: str, platform: str):
         """Generate suggestions for ecosystem commenting"""
         
@@ -461,7 +483,7 @@ For each suggestion, provide:
 Return as a brief numbered list."""
 
         message = self.anthropic_client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model=CONFIG["anthropic_model"],
             max_tokens=400,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -628,7 +650,7 @@ Then write a short post (Substack Note or platform post) with:
 Return the complete post text with links."""
 
         message = self.anthropic_client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model=CONFIG["anthropic_model"],
             max_tokens=600,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -649,6 +671,207 @@ Return the complete post text with links."""
         
         print("[Weekly task] On-ramp post generated")
     
+    def _get_substack_base_url(self) -> str:
+        """Extract scheme+host from the configured Substack URL."""
+        from urllib.parse import urlparse
+        parsed = urlparse(CONFIG["substack_url"])
+        return f"{parsed.scheme}://{parsed.netloc}"
+
+    def extract_article_metadata(self, title: str, subtitle: str, content: str) -> Dict[str, Any]:
+        """Use Claude to extract subtitle, topics, and core mechanism for the inventory."""
+        prompt = f"""Extract structured metadata from this blog article.
+
+Title: {title}
+Subtitle: {subtitle or "(none provided)"}
+Content excerpt:
+{content[:2500]}
+
+Return a JSON object with exactly these fields:
+- "subtitle": The best subtitle (use provided if clear, else write one under 12 words)
+- "topics": Array of 3-6 lowercase topic tags (e.g. ["leadership", "execution", "management"])
+- "core_mechanism": One sentence under 20 words capturing the core insight or mechanism
+
+Return ONLY valid JSON. No markdown fences, no explanation."""
+
+        message = self.anthropic_client.messages.create(
+            model=CONFIG["anthropic_model"],
+            max_tokens=300,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        raw = message.content[0].text.strip()
+        if raw.startswith("```"):
+            parts = raw.split("```")
+            raw = parts[1] if len(parts) > 1 else raw
+            if raw.startswith("json"):
+                raw = raw[4:]
+        return json.loads(raw.strip())
+
+    def fetch_all_substack_posts_via_api(self) -> List[Dict[str, Any]]:
+        """Paginate the Substack /api/v1/posts endpoint to retrieve all published posts."""
+        base_url = self._get_substack_base_url()
+        if "yoursubstack.substack.com" in base_url:
+            print("[Inventory] SUBSTACK_URL is still the placeholder — set it in .env first.", flush=True)
+            return []
+
+        all_posts: List[Dict[str, Any]] = []
+        offset = 0
+        limit = 25
+
+        while True:
+            url = f"{base_url}/api/v1/posts?offset={offset}&limit={limit}&sort=new"
+            try:
+                req = Request(url, method="GET")
+                req.add_header("User-Agent", "PromotionAgent/1.0")
+                with urlopen(req, timeout=15) as resp:
+                    data = json.loads(resp.read().decode())
+            except (HTTPError, URLError, json.JSONDecodeError, OSError) as e:
+                print(f"[Inventory] API fetch failed at offset {offset}: {e}", flush=True)
+                break
+
+            page = data if isinstance(data, list) else data.get("posts", [])
+            if not page:
+                break
+
+            all_posts.extend(page)
+            print(f"[Inventory] Fetched {len(all_posts)} posts so far...", flush=True)
+
+            if len(page) < limit:
+                break
+            offset += limit
+
+        return all_posts
+
+    def add_article_to_inventory(self, post_id: str, title: str, url: str,
+                                  published_date: str, subtitle: str, content: str,
+                                  skip_export: bool = False):
+        """Upsert one article into article_inventory and optionally re-export the Markdown."""
+        try:
+            metadata = self.extract_article_metadata(title, subtitle, content)
+            final_subtitle = metadata.get("subtitle") or subtitle or ""
+            topics_raw = metadata.get("topics", [])
+            topics = ", ".join(topics_raw) if isinstance(topics_raw, list) else str(topics_raw)
+            core_mechanism = metadata.get("core_mechanism", "")
+        except Exception as e:
+            print(f"[Inventory] Metadata extraction failed for '{title}': {e}", flush=True)
+            final_subtitle = subtitle or ""
+            topics = ""
+            core_mechanism = ""
+
+        conn = self._db_connect()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT OR REPLACE INTO article_inventory
+                (id, title, subtitle, url, published_date, topics, core_mechanism, added_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (post_id, title, final_subtitle, url, published_date,
+              topics, core_mechanism, datetime.now().isoformat()))
+        conn.commit()
+        conn.close()
+
+        if not skip_export:
+            self.export_inventory_to_markdown()
+        print(f"[Inventory] Added: {title}", flush=True)
+
+    def build_article_inventory(self):
+        """One-time build pass: fetch all historical posts from Substack API and populate inventory."""
+        print("[Inventory] Starting full inventory build...", flush=True)
+        posts = self.fetch_all_substack_posts_via_api()
+        print(f"[Inventory] {len(posts)} posts found via API", flush=True)
+
+        added = 0
+        skipped = 0
+        for post in posts:
+            url = post.get("canonical_url", "")
+            if not url:
+                continue
+            post_id = hashlib.md5(url.encode()).hexdigest()
+
+            conn = self._db_connect()
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM article_inventory WHERE id = ?", (post_id,))
+            exists = cursor.fetchone() is not None
+            conn.close()
+
+            if exists:
+                skipped += 1
+                continue
+
+            title = post.get("title") or ""
+            subtitle = post.get("subtitle") or ""
+            published_date = post.get("post_date") or ""
+            content = post.get("truncated_body_text") or post.get("description") or ""
+
+            try:
+                self.add_article_to_inventory(
+                    post_id, title, url, published_date, subtitle, content,
+                    skip_export=True
+                )
+                added += 1
+            except Exception as e:
+                print(f"[Inventory] Failed to add '{title}': {e}", flush=True)
+
+        self.export_inventory_to_markdown()
+        print(f"[Inventory] Build complete: {added} added, {skipped} already in inventory.", flush=True)
+
+    def export_inventory_to_markdown(self):
+        """Write article_inventory.md to the project folder."""
+        try:
+            conn = self._db_connect()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT title, subtitle, url, published_date, topics, core_mechanism
+                FROM article_inventory
+                ORDER BY published_date DESC
+            """)
+            rows = cursor.fetchall()
+            conn.close()
+
+            md_path = _script_dir / "article_inventory.md"
+            now_str = datetime.now().strftime("%Y-%m-%d")
+            count = len(rows)
+
+            lines = [
+                "# Article Inventory",
+                "",
+                f"*Last updated: {now_str} · {count} article{'s' if count != 1 else ''}*",
+                "",
+                "---",
+                "",
+            ]
+
+            for title, subtitle, url, published_date, topics, core_mechanism in rows:
+                pub_str = ""
+                if published_date:
+                    try:
+                        clean = published_date.replace("Z", "").split("+")[0].split("T")[0]
+                        d = datetime.strptime(clean, "%Y-%m-%d")
+                        pub_str = d.strftime("%B %d, %Y")
+                    except Exception:
+                        pub_str = published_date[:10]
+
+                lines.append(f"## [{title}]({url})")
+                if pub_str:
+                    lines.append(f"**Published:** {pub_str}")
+                if subtitle:
+                    lines.append(f"**Subtitle:** {subtitle}")
+                if topics:
+                    tag_str = " · ".join(
+                        f"`{t.strip()}`" for t in topics.split(",") if t.strip()
+                    )
+                    lines.append(f"**Topics:** {tag_str}")
+                if core_mechanism:
+                    lines.append(f"**Summary:** {core_mechanism}")
+                lines.append("")
+                lines.append("---")
+                lines.append("")
+
+            with open(md_path, "w", encoding="utf-8") as f:
+                f.write("\n".join(lines))
+
+            print(f"[Inventory] Exported {count} articles to {md_path}", flush=True)
+        except Exception as e:
+            print(f"[Inventory] Markdown export failed: {e}", flush=True)
+
     def run(self):
         """Main agent loop"""
         print("=== Promotion Agent Started ===")
@@ -674,5 +897,9 @@ Return the complete post text with links."""
 
 
 if __name__ == "__main__":
+    import sys
     agent = PromotionAgent()
-    agent.run()
+    if "--build-inventory" in sys.argv:
+        agent.build_article_inventory()
+    else:
+        agent.run()

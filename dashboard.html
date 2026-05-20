@@ -43,7 +43,25 @@
             margin-bottom: 20px;
             padding-bottom: 10px;
             border-bottom: 2px solid #e0e0e0;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
+        .section h2:hover { color: #555; }
+        .section-chevron {
+            font-size: 18px;
+            color: #bbb;
+            margin-left: 10px;
+            flex-shrink: 0;
+            transition: transform 0.2s;
+            line-height: 1;
+        }
+        .section.collapsed .section-chevron { transform: rotate(-90deg); }
+        .section-content { transition: opacity 0.15s; }
+        .section.collapsed .section-content { display: none; }
+        .section.collapsed h2 { margin-bottom: 0; border-bottom-color: transparent; }
         .promo-card {
             background: #fafafa;
             border: 1px solid #e0e0e0;
@@ -264,6 +282,139 @@
         }
         .substack-profile a { color: #1976d2; font-weight: 600; }
         .substack-profile .fetched { color: #666; font-size: 12px; margin-top: 8px; }
+        .inventory-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+        .build-btn {
+            background: #673AB7;
+            color: white;
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+        .build-btn:hover { background: #512DA8; }
+        .build-btn:disabled { background: #9E9E9E; cursor: not-allowed; }
+        .export-btn {
+            background: #009688;
+            color: white;
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+        .export-btn:hover { background: #00796B; }
+        .inventory-status-msg {
+            font-size: 13px;
+            color: #555;
+        }
+        .inventory-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            margin-top: 6px;
+        }
+        .inventory-table th {
+            text-align: left;
+            padding: 8px 10px;
+            background: #f0f0f0;
+            font-weight: 600;
+            color: #444;
+            border-bottom: 2px solid #ddd;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .inventory-table td {
+            padding: 10px 10px;
+            border-bottom: 1px solid #eee;
+            vertical-align: top;
+        }
+        .inventory-table tr:last-child td { border-bottom: none; }
+        .inventory-table tr:hover td { background: #fafafa; }
+        .inventory-search-bar {
+            background: #f8f8f8;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+        }
+        .search-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+        .search-field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1;
+            min-width: 150px;
+        }
+        .search-field-narrow { flex: 0 0 110px; min-width: 90px; }
+        .search-field label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .search-input, .search-select {
+            padding: 7px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .search-input:focus, .search-select:focus { border-color: #673AB7; box-shadow: 0 0 0 2px rgba(103,58,183,0.12); }
+        .clear-search-btn {
+            background: #e0e0e0;
+            color: #555;
+            padding: 7px 14px;
+            font-size: 13px;
+            align-self: flex-end;
+        }
+        .clear-search-btn:hover { background: #ccc; }
+        .search-count { margin-top: 8px; font-size: 12px; color: #888; }
+        mark.search-hl { background: #FFF176; color: inherit; border-radius: 2px; padding: 0 1px; }
+        .inventory-title-link {
+            color: #1976d2;
+            text-decoration: none;
+            font-weight: 600;
+            line-height: 1.4;
+        }
+        .inventory-title-link:hover { text-decoration: underline; }
+        .inventory-subtitle {
+            color: #666;
+            font-size: 12px;
+            margin-top: 2px;
+        }
+        .inventory-topics {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .topic-chip {
+            background: #EDE7F6;
+            color: #512DA8;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .inventory-summary {
+            color: #444;
+            font-style: italic;
+            line-height: 1.5;
+        }
+        .inventory-date {
+            color: #888;
+            font-size: 12px;
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
@@ -292,6 +443,37 @@
         <div class="section">
             <h2>📅 Weekly Tasks</h2>
             <div id="weekly-tasks"></div>
+        </div>
+
+        <div class="section" id="inventory-section">
+            <h2>📚 Article Inventory</h2>
+            <p class="section-desc">All published articles with topics and core mechanisms. Run the build pass once to populate historical articles; new articles are added automatically.</p>
+            <div class="inventory-search-bar">
+                <div class="search-row">
+                    <div class="search-field">
+                        <label for="inv-search">Search</label>
+                        <input type="text" id="inv-search" class="search-input" placeholder="title, subtitle, or summary…" oninput="applyInventoryFilters()">
+                    </div>
+                    <div class="search-field">
+                        <label for="inv-topic">Topic</label>
+                        <input type="text" id="inv-topic" class="search-input" placeholder="e.g. leadership…" oninput="applyInventoryFilters()">
+                    </div>
+                    <div class="search-field search-field-narrow">
+                        <label for="inv-year">Year</label>
+                        <select id="inv-year" class="search-select" onchange="applyInventoryFilters()">
+                            <option value="">All years</option>
+                        </select>
+                    </div>
+                    <button class="clear-search-btn" onclick="clearInventoryFilters()">✕ Clear</button>
+                </div>
+                <div class="search-count" id="inventory-count"></div>
+            </div>
+            <div class="inventory-toolbar">
+                <button class="build-btn" id="build-btn" onclick="triggerInventoryBuild()">🔨 Build / Refresh Inventory</button>
+                <button class="export-btn" onclick="exportInventoryMarkdown()">⬇ Re-export Markdown</button>
+                <span class="inventory-status-msg" id="inventory-status-msg"></span>
+            </div>
+            <div id="inventory-list"></div>
         </div>
 
         <div class="section archive-section">
@@ -415,16 +597,16 @@
 
             container.innerHTML = promotions.map(promo => `
                 <div class="promo-card" data-id="${promo.promotion_id}" data-post-id="${escapeHtml(promo.post_id || '')}" data-platform="${escapeHtml(promo.platform || '')}">
-                    <div class="post-title">${promo.post_title}</div>
+                    <div class="post-title">${escapeHtml(promo.post_title)}</div>
                     <span class="platform-badge ${promo.platform}">${promo.platform.replace('_', ' ')}</span>
                     ${promo.post_url ? `<a href="${escapeHtml(promo.post_url)}" target="_blank" rel="noopener" class="view-post-link" data-promotion-id="${promo.promotion_id}" data-post-id="${escapeHtml(promo.post_id || '')}" data-platform="${escapeHtml(promo.platform || '')}" data-url="${escapeHtml((promo.post_url || '').substring(0, 200))}" onclick="trackLinkClick(this)">View post ↗</a>` : ''}
-                    
+
                     <div class="label">Outward Sentence:</div>
-                    <div class="outward-sentence">${promo.outward_sentence}</div>
-                    
+                    <div class="outward-sentence">${escapeHtml(promo.outward_sentence)}</div>
+
                     <div class="label">Promotional Post:</div>
-                    <div class="promotional-post hidden" id="view-${promo.promotion_id}">${promo.promotional_post}</div>
-                    <textarea class="promotional-post" id="edit-${promo.promotion_id}">${promo.promotional_post}</textarea>
+                    <div class="promotional-post hidden" id="view-${promo.promotion_id}">${escapeHtml(promo.promotional_post)}</div>
+                    <textarea class="promotional-post" id="edit-${promo.promotion_id}">${escapeHtml(promo.promotional_post)}</textarea>
                     
                     <div class="actions">
                         <button class="copy-btn" onclick="copyToClipboard('${promo.promotion_id}')">
@@ -459,8 +641,8 @@
                 const promo = dashboardData.pending_promotions.find(p => p.post_id === postId);
                 return `
                     <div class="task-item">
-                        <div class="task-type">For: ${promo ? promo.post_title : 'Post'}</div>
-                        <div class="commenting-suggestions">${content}</div>
+                        <div class="task-type">For: ${escapeHtml(promo ? promo.post_title : 'Post')}</div>
+                        <div class="commenting-suggestions">${escapeHtml(content)}</div>
                     </div>
                 `;
             }).join('');
@@ -553,10 +735,10 @@
 
             container.innerHTML = tasks.map(task => `
                 <div class="task-item">
-                    <div class="task-type">${task.task_type.replace('_', ' ').toUpperCase()}</div>
-                    <div class="commenting-suggestions">${task.content}</div>
+                    <div class="task-type">${escapeHtml(task.task_type.replace('_', ' ').toUpperCase())}</div>
+                    <div class="commenting-suggestions">${escapeHtml(task.content)}</div>
                     <div class="actions">
-                        <button class="copy-btn" onclick="copyTaskContent('${task.task_id}', \`${task.content.replace(/`/g, '\\`')}\`)">
+                        <button class="copy-btn" data-task-id="${task.task_id}" data-content="${escapeHtml(task.content)}" onclick="copyTaskContent(this)">
                             📋 Copy
                         </button>
                         <button class="approve-btn" onclick="markTaskComplete('${task.task_id}')">
@@ -594,10 +776,11 @@
             });
         }
 
-        function copyTaskContent(taskId, content) {
+        function copyTaskContent(btn) {
+            const taskId = btn.dataset.taskId;
+            const content = btn.dataset.content;
             trackEvent('copy_task', { task_id: parseInt(taskId, 10) });
             navigator.clipboard.writeText(content).then(() => {
-                const btn = event.target;
                 const originalText = btn.textContent;
                 btn.textContent = '✓ Copied!';
                 btn.classList.add('copied');
@@ -680,9 +863,250 @@
             }
         }
 
+        let _inventoryBuildPollTimer = null;
+        let _allInventoryItems = [];
+
+        function loadInventory() {
+            fetch('/api/inventory')
+                .then(res => res.ok ? res.json() : Promise.reject(res))
+                .then(data => {
+                    _allInventoryItems = data.items || [];
+                    populateYearFilter(_allInventoryItems);
+                    applyInventoryFilters();
+                })
+                .catch(() => {
+                    const el = document.getElementById('inventory-list');
+                    if (el) el.innerHTML = '<div class="empty-state">Could not load inventory. Make sure the agent has run at least once.</div>';
+                });
+        }
+
+        function populateYearFilter(items) {
+            const sel = document.getElementById('inv-year');
+            if (!sel) return;
+            const current = sel.value;
+            const years = [...new Set(
+                items.map(item => {
+                    if (!item.published_date) return null;
+                    const y = new Date(item.published_date).getFullYear();
+                    return isNaN(y) ? null : y;
+                }).filter(Boolean)
+            )].sort((a, b) => b - a);
+            sel.innerHTML = '<option value="">All years</option>' +
+                years.map(y => `<option value="${y}"${String(y) === current ? ' selected' : ''}>${y}</option>`).join('');
+        }
+
+        function applyInventoryFilters() {
+            const search = (document.getElementById('inv-search')?.value || '').toLowerCase().trim();
+            const topic  = (document.getElementById('inv-topic')?.value  || '').toLowerCase().trim();
+            const year   =  document.getElementById('inv-year')?.value   || '';
+
+            let filtered = _allInventoryItems;
+
+            if (search) {
+                filtered = filtered.filter(item =>
+                    (item.title          || '').toLowerCase().includes(search) ||
+                    (item.subtitle       || '').toLowerCase().includes(search) ||
+                    (item.core_mechanism || '').toLowerCase().includes(search)
+                );
+            }
+            if (topic) {
+                filtered = filtered.filter(item =>
+                    (item.topics || '').toLowerCase().includes(topic)
+                );
+            }
+            if (year) {
+                filtered = filtered.filter(item => {
+                    if (!item.published_date) return false;
+                    return String(new Date(item.published_date).getFullYear()) === year;
+                });
+            }
+
+            const countEl = document.getElementById('inventory-count');
+            if (countEl) {
+                const total = _allInventoryItems.length;
+                countEl.textContent = filtered.length === total
+                    ? `${total} article${total !== 1 ? 's' : ''}`
+                    : `${filtered.length} of ${total} articles`;
+            }
+
+            renderInventory(filtered, search, topic);
+        }
+
+        function clearInventoryFilters() {
+            ['inv-search', 'inv-topic'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+            const sel = document.getElementById('inv-year'); if (sel) sel.value = '';
+            applyInventoryFilters();
+        }
+
+        function highlightMatch(text, term) {
+            if (!term || !text) return escapeHtml(text || '');
+            const safe = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            return text.split(new RegExp(`(${safe})`, 'gi')).map(part =>
+                part.toLowerCase() === term.toLowerCase()
+                    ? `<mark class="search-hl">${escapeHtml(part)}</mark>`
+                    : escapeHtml(part)
+            ).join('');
+        }
+
+        function renderInventory(items, searchTerm, topicTerm) {
+            const container = document.getElementById('inventory-list');
+            if (!container) return;
+            if (items.length === 0) {
+                const hasFilters = searchTerm || topicTerm || document.getElementById('inv-year')?.value;
+                container.innerHTML = hasFilters
+                    ? `<div class="empty-state">No articles match your filters. <a href="#" onclick="clearInventoryFilters();return false;">Clear filters</a></div>`
+                    : '<div class="empty-state">No articles in inventory yet. Click "Build / Refresh Inventory" to fetch all published posts.</div>';
+                return;
+            }
+            let html = `<table class="inventory-table">
+                <thead><tr>
+                    <th>Title &amp; Subtitle</th>
+                    <th>Published</th>
+                    <th>Topics</th>
+                    <th>Core Mechanism / Summary</th>
+                </tr></thead><tbody>`;
+            items.forEach(item => {
+                const pub = item.published_date ? formatInventoryDate(item.published_date) : '—';
+                const topicsHtml = item.topics
+                    ? item.topics.split(',').filter(t => t.trim()).map(t => {
+                        const label = escapeHtml(t.trim());
+                        const highlighted = topicTerm
+                            ? highlightMatch(t.trim(), topicTerm)
+                            : label;
+                        return `<span class="topic-chip">${highlighted}</span>`;
+                    }).join('')
+                    : '—';
+                const titleHtml    = highlightMatch(item.title          || '', searchTerm || '');
+                const subtitleHtml = highlightMatch(item.subtitle       || '', searchTerm || '');
+                const summaryHtml  = highlightMatch(item.core_mechanism || '', searchTerm || '');
+                html += `<tr>
+                    <td>
+                        <a href="${escapeHtml(item.url)}" target="_blank" rel="noopener" class="inventory-title-link">${titleHtml}</a>
+                        ${item.subtitle ? `<div class="inventory-subtitle">${subtitleHtml}</div>` : ''}
+                    </td>
+                    <td class="inventory-date">${escapeHtml(pub)}</td>
+                    <td><div class="inventory-topics">${topicsHtml}</div></td>
+                    <td class="inventory-summary">${summaryHtml || '—'}</td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function formatInventoryDate(dateStr) {
+            try {
+                const d = new Date(dateStr);
+                if (isNaN(d.getTime())) return dateStr.slice(0, 10);
+                return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+            } catch { return dateStr.slice(0, 10); }
+        }
+
+        function triggerInventoryBuild() {
+            const btn = document.getElementById('build-btn');
+            const msg = document.getElementById('inventory-status-msg');
+            if (btn) { btn.disabled = true; btn.textContent = '⏳ Building…'; }
+            if (msg) msg.textContent = 'Starting build — this may take a few minutes…';
+
+            fetch('/api/inventory/build', { method: 'POST' })
+                .then(res => res.ok ? res.json() : Promise.reject(res))
+                .then(data => {
+                    if (data.status === 'already_running') {
+                        if (msg) msg.textContent = 'Build already running…';
+                    }
+                    startBuildStatusPolling();
+                })
+                .catch(() => {
+                    if (btn) { btn.disabled = false; btn.textContent = '🔨 Build / Refresh Inventory'; }
+                    if (msg) msg.textContent = 'Could not start build. Is the server running?';
+                });
+        }
+
+        function startBuildStatusPolling() {
+            if (_inventoryBuildPollTimer) clearInterval(_inventoryBuildPollTimer);
+            _inventoryBuildPollTimer = setInterval(pollBuildStatus, 4000);
+        }
+
+        function pollBuildStatus() {
+            fetch('/api/inventory/status')
+                .then(res => res.ok ? res.json() : Promise.reject(res))
+                .then(state => {
+                    const btn = document.getElementById('build-btn');
+                    const msg = document.getElementById('inventory-status-msg');
+                    if (state.running) {
+                        if (msg) msg.textContent = `Building… ${state.count || 0} articles added so far`;
+                    } else {
+                        clearInterval(_inventoryBuildPollTimer);
+                        _inventoryBuildPollTimer = null;
+                        if (btn) { btn.disabled = false; btn.textContent = '🔨 Build / Refresh Inventory'; }
+                        if (state.error) {
+                            if (msg) msg.textContent = `Build failed: ${state.error}`;
+                        } else if (state.last_run) {
+                            const ts = new Date(state.last_run).toLocaleTimeString();
+                            if (msg) msg.textContent = `Last built: ${ts} · ${state.count} articles`;
+                            loadInventory();
+                        }
+                    }
+                })
+                .catch(() => {
+                    clearInterval(_inventoryBuildPollTimer);
+                    _inventoryBuildPollTimer = null;
+                });
+        }
+
+        function exportInventoryMarkdown() {
+            fetch('/api/inventory/export', { method: 'POST' })
+                .then(res => res.ok ? res.json() : Promise.reject(res))
+                .then(() => {
+                    const msg = document.getElementById('inventory-status-msg');
+                    if (msg) { msg.textContent = 'article_inventory.md exported.'; setTimeout(() => { msg.textContent = ''; }, 3000); }
+                })
+                .catch(() => alert('Export failed. Check the server logs.'));
+        }
+
+        function initCollapsibleSections() {
+            document.querySelectorAll('.section').forEach(section => {
+                const h2 = section.querySelector(':scope > h2');
+                if (!h2) return;
+
+                // Stable key for localStorage: prefer existing id, else derive from heading text
+                const sectionId = section.id ||
+                    h2.textContent.trim().replace(/[^\w]+/g, '-').toLowerCase().slice(0, 40);
+                if (!section.id) section.id = sectionId;
+                const storageKey = 'section-collapsed-' + sectionId;
+
+                // Wrap all siblings after h2 in a content div
+                const content = document.createElement('div');
+                content.className = 'section-content';
+                [...section.children].forEach(child => {
+                    if (child !== h2) content.appendChild(child);
+                });
+                section.appendChild(content);
+
+                // Add chevron indicator
+                const chevron = document.createElement('span');
+                chevron.className = 'section-chevron';
+                chevron.textContent = '▾';
+                h2.appendChild(chevron);
+
+                // Toggle on click
+                h2.addEventListener('click', () => {
+                    const collapsed = section.classList.toggle('collapsed');
+                    localStorage.setItem(storageKey, collapsed ? '1' : '0');
+                });
+
+                // Restore saved state
+                if (localStorage.getItem(storageKey) === '1') {
+                    section.classList.add('collapsed');
+                }
+            });
+        }
+
         // Load dashboard on page load and refresh every 5 minutes
+        initCollapsibleSections();
         loadDashboard();
+        loadInventory();
         setInterval(loadDashboard, 5 * 60 * 1000);
+        setInterval(loadInventory, 5 * 60 * 1000);
     </script>
 </body>
 </html>

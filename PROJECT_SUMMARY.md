@@ -2,7 +2,7 @@
 
 ## What I Built
 
-A complete autonomous agent that implements your "promote sentences, not articles" strategy. The agent runs in the cloud and automatically processes every blog post you publish, generating promotional content for your review.
+A complete autonomous agent that implements your "promote sentences, not articles" strategy. The agent runs in the cloud and automatically processes every blog post you publish, generating promotional content for your review — and maintains a searchable inventory of your entire article catalog.
 
 ## Core Features
 
@@ -14,9 +14,19 @@ A complete autonomous agent that implements your "promote sentences, not article
 - Generates platform-native promotional posts
 - Creates ecosystem commenting suggestions
 - Produces weekly on-ramp posts every Monday
+- Automatically adds each new article to the inventory
+
+### ✅ Article Inventory
+- Stores every published article: Title, Subtitle, URL, Published Date, Topics, Core Mechanism
+- One-time build pass populates your full back-catalog (uses Substack's public API with pagination)
+- Auto-updated every time a new post is processed
+- Exported to `article_inventory.md` in the project folder after every update
+- Searchable in the dashboard: keyword (title/subtitle/summary), topic filter, year dropdown
+- Matched text highlighted in results
 
 ### ✅ Review & Release Workflow
 - Clean web dashboard to review all drafts
+- All six sections are collapsible — state saved in browser localStorage
 - Inline editing for any generated content
 - One-click copy to clipboard
 - Track what's been published
@@ -27,7 +37,7 @@ A complete autonomous agent that implements your "promote sentences, not article
 - Deploy to Railway, Render, Fly.io, or others
 - Persistent storage for your data
 - Health checks and monitoring
-- ~$0.35/month in API costs
+- ~$2–5/month in API costs (publishing 2–3×/week)
 - Free tier sufficient for most platforms
 
 ## Project Structure
@@ -37,6 +47,8 @@ promotion_agent/
 ├── agent.py                 # Main agent logic
 ├── server.py               # Web server for dashboard
 ├── dashboard.html          # Review interface
+├── create_db.py            # Standalone DB initializer
+├── db_shell.py             # Interactive SQL shell
 ├── requirements.txt        # Python dependencies
 ├── Dockerfile              # Container image
 ├── docker-compose.yml      # Local deployment
@@ -44,6 +56,7 @@ promotion_agent/
 ├── setup.sh               # Quick setup script
 ├── .env.example           # Configuration template
 ├── .gitignore             # Git exclusions
+├── article_inventory.md   # Exported article inventory (auto-generated)
 ├── README.md              # Complete documentation
 ├── DEPLOYMENT.md          # Cloud deployment guide
 ├── EXAMPLES.md            # Sample outputs
@@ -58,11 +71,13 @@ promotion_agent/
 - SQLite (for state management)
 - feedparser (RSS monitoring)
 - schedule (task scheduling)
+- threading (non-blocking inventory build)
 
 **Frontend:**
 - Vanilla JavaScript (no frameworks)
 - Clean, minimal HTML/CSS
-- Mobile-responsive design
+- Collapsible sections with localStorage persistence
+- Client-side search filtering with match highlighting
 
 **Infrastructure:**
 - Docker + Docker Compose
@@ -85,13 +100,15 @@ promotion_agent/
    ↓
 6. Creates Commenting Suggestions
    ↓
-7. Saves to Database + Dashboard JSON
+7. Adds Article to Inventory (topics + core mechanism)
    ↓
-8. You Review in Dashboard
+8. Saves to Database + Dashboard JSON + article_inventory.md
    ↓
-9. Copy → Post → Mark Published
+9. You Review in Dashboard
    ↓
-10. Track Everything
+10. Copy → Post → Mark Published
+    ↓
+11. Track Everything
 ```
 
 ## What Makes It Different
@@ -102,11 +119,13 @@ promotion_agent/
 - Adapts tone to each platform
 - Suggests specific commenting strategies
 - Creates weekly on-ramp content
+- Builds a searchable record of your entire body of work
 
 ### Respects Your Workflow
 - No direct posting (you review everything)
 - Edit anything inline
 - Skip promotions you don't want
+- Collapse sections you don't need right now
 - Track what you've done
 - Maintains full control
 
@@ -140,6 +159,18 @@ start http://localhost:5000 # Windows
 xdg-open http://localhost:5000 # Linux
 ```
 
+### Build Your Article Inventory (one-time)
+
+After starting the agent, populate your full back-catalog:
+
+```bash
+# Via dashboard
+# Click "🔨 Build / Refresh Inventory" in the Article Inventory section
+
+# Or via command line
+docker compose exec promotion-agent python agent.py --build-inventory
+```
+
 ### Cloud Deployment (15 minutes)
 
 Railway (recommended):
@@ -170,10 +201,16 @@ See DEPLOYMENT.md for detailed guides for Railway, Render, Fly.io, and others.
 - Complete thoughts, not teasers
 - Follows your exact strategy
 
+### Searchable Article Catalog
+- Every article captured with topics and one-line summary
+- Find the right article to reference in comments or on-ramps
+- Filter by keyword, topic, or year
+- Always up to date
+
 ### Cost
-- ~$0.35/month in API costs
+- ~$0.03–0.05/post in API costs
 - Free cloud hosting (Railway/Render free tier)
-- **Total:** Less than a coffee per month
+- **Total:** A few dollars per month
 
 ## What You Need
 
@@ -222,6 +259,13 @@ If you've felt this, you know how it compounds over time.
 I wrote the longer version here: [link]
 ```
 
+**Inventory entry (auto-generated):**
+```
+Title:          The Likability Tax on Technical Leadership
+Topics:         leadership, women in tech, cognitive load, decision-making
+Core Mechanism: Managing others' emotional comfort compounds into a decision-making tax for technical leaders
+```
+
 See EXAMPLES.md for more samples.
 
 ## Next Steps
@@ -231,12 +275,13 @@ See EXAMPLES.md for more samples.
 2. Run `./setup.sh` to configure
 3. Start with `docker-compose up -d`
 4. Access dashboard at `http://localhost:5000`
-5. Publish a test post to see it work
+5. Build article inventory (click button in dashboard)
+6. Publish a test post to see it work
 
 ### First Week:
 1. Review first few promotions carefully
 2. Edit to match your voice
-3. The agent learns from your edits
+3. Explore the article inventory search
 4. Establish your daily workflow
 
 ### First Month:
@@ -265,10 +310,10 @@ Everything you need is documented:
 ## Cost Breakdown
 
 **API Usage:**
-- $0.03 per post processed
-- 2 posts/week = ~$0.24/month
+- $0.03–0.05 per post processed (sentence + promo + commenting + inventory metadata)
+- One-time inventory build: ~$0.05–0.15 (back-catalog size dependent)
+- 2–3 posts/week ≈ $2–5/month
 - Weekly tasks = ~$0.10/month
-- **Total: $0.35/month**
 
 **Infrastructure:**
 - Railway: Free (with limits) or $5/month
@@ -279,17 +324,18 @@ Everything you need is documented:
 **Your Time Value:**
 - Save 30 min/post × 8 posts/month = 4 hours
 - At $50/hour = $200 value
-- **ROI: 571x on paid tier, infinite on free**
+- **ROI: 50x+ even on paid tier**
 
 ## What You Get
 
-### Files (12 total):
+### Files (15 total):
 - ✅ Complete Python agent
 - ✅ Web dashboard interface
 - ✅ Docker deployment files
 - ✅ Setup automation script
 - ✅ 4 comprehensive guides
 - ✅ Configuration templates
+- ✅ DB initializer + SQL shell utilities
 
 ### Features:
 - ✅ Autonomous post processing
@@ -298,7 +344,9 @@ Everything you need is documented:
 - ✅ Promotional post generation
 - ✅ Commenting suggestions
 - ✅ Weekly on-ramp posts
-- ✅ Review dashboard
+- ✅ Article inventory (searchable, auto-updated)
+- ✅ Markdown inventory export
+- ✅ Review dashboard with collapsible sections
 - ✅ Activity tracking
 - ✅ Cloud-ready deployment
 
@@ -323,10 +371,11 @@ This is a **production-ready** system, not a prototype:
 
 You can literally:
 1. Run setup in 5 minutes
-2. Publish a post
-3. See it processed automatically
-4. Review in dashboard
-5. Post to platforms
+2. Build your article inventory in one click
+3. Publish a post
+4. See it processed automatically
+5. Review in dashboard
+6. Post to platforms
 
 No configuration maze, no debugging session, no "almost working." It works.
 

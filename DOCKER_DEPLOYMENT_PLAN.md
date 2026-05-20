@@ -14,6 +14,7 @@ Step-by-step plan to deploy the Promotion Agent in Docker and confirm it is runn
   - `SUBSTACK_URL=https://yoursubstack.substack.com/feed`
   - `ANTHROPIC_API_KEY=sk-ant-...`
   - Optional: `CHECK_INTERVAL_MINUTES=60`
+  - **For cloud / shared deployments:** `DASHBOARD_USERNAME=admin` and `DASHBOARD_PASSWORD=your-password`
 
 ---
 
@@ -29,14 +30,14 @@ Step-by-step plan to deploy the Promotion Agent in Docker and confirm it is runn
    ```powershell
    docker-compose build
    ```
-   - Expect: “Successfully built” and “Successfully tagged”.
+   - Expect: "Successfully built" and "Successfully tagged".
    - If build fails: fix reported errors (e.g. missing files, Dockerfile syntax).
 
 3. **Start the stack** (detached):
    ```powershell
    docker-compose up -d
    ```
-   - Expect: “Container promotion-agent Started” (or “Created” then “Started”).
+   - Expect: "Container promotion-agent Started" (or "Created" then "Started").
 
 4. **Optional – run in foreground** to watch logs:
    ```powershell
@@ -65,7 +66,7 @@ Step-by-step plan to deploy the Promotion Agent in Docker and confirm it is runn
 ### 3.2 Dashboard is reachable
 
 - [ ] **Open in browser:** [http://localhost:5000](http://localhost:5000)  
-  - Expect: Promotion Agent dashboard (HTML page).
+  - Expect: Promotion Agent dashboard with six collapsible sections (Analytics, Pending Promotions, Commenting Tasks, Weekly Tasks, Article Inventory, Archive).
 
 - [ ] **Dashboard JSON** (optional):  
   [http://localhost:5000/review_dashboard.json](http://localhost:5000/review_dashboard.json)  
@@ -80,13 +81,19 @@ Step-by-step plan to deploy the Promotion Agent in Docker and confirm it is runn
   - Expect: JSON like `{"total_posts": ..., "promotions": {...}, "recent_activity": {...}}`.  
   - Status 200; numbers can be zero before any posts are processed.
 
+- [ ] **Inventory endpoint:**
+  ```powershell
+  curl http://localhost:5000/api/inventory
+  ```
+  - Expect: JSON like `{"items": [], "count": 0}` before the inventory build; populated after the build.
+
 ### 3.4 Logs (agent and server)
 
 - [ ] **Follow logs:**
   ```powershell
   docker-compose logs -f promotion-agent
   ```
-  - Expect: Lines from both agent and server (e.g. “Promotion Agent Started”, “Monitoring: …”, “Checking for new posts…”, “Running on http://…”).  
+  - Expect: Lines from both agent and server (e.g. "Promotion Agent Started", "Monitoring: …", "Checking for new posts…", "Running on http://…").  
   - Stop with **Ctrl+C**.
 
 - [ ] **Last 50 lines** (no follow):
@@ -110,23 +117,54 @@ Step-by-step plan to deploy the Promotion Agent in Docker and confirm it is runn
   - `./data/` (directory)
   - `./promotion_agent.db` (SQLite DB; created when agent runs)
   - `./review_dashboard.json` (created when agent generates dashboard)
+  - `./article_inventory.md` (created after the inventory build; auto-updated on new posts)
 - [ ] **Restart and re-check:**  
   `docker-compose restart promotion-agent` then open [http://localhost:5000](http://localhost:5000) again and confirm dashboard still loads (and stats if you had any).
 
 ---
 
-## Phase 4: Quick verification checklist
+## Phase 4: Build Article Inventory (one-time)
+
+After confirming the agent is running correctly, populate your full article back-catalog.
+
+**Via dashboard (easiest):**
+- Open [http://localhost:5000](http://localhost:5000)
+- Scroll to the 📚 Article Inventory section
+- Click **"🔨 Build / Refresh Inventory"**
+- Watch the status message — build runs in the background
+- When complete, the table populates with all your articles
+
+**Via command line:**
+```powershell
+docker compose exec promotion-agent python agent.py --build-inventory
+```
+
+**Expected outcome:**
+- All published articles appear in the inventory table
+- `article_inventory.md` created in project folder
+- `/api/inventory` returns all articles with topics and core mechanism summaries
+
+**Notes:**
+- Cost: ~$0.05–0.15 depending on back-catalog size
+- The build is idempotent — re-running skips articles already in the inventory
+- New articles are added automatically as the agent processes each new post
+
+---
+
+## Phase 5: Quick verification checklist
 
 | Check | Command or action | Expected |
 |-------|-------------------|----------|
 | Container up | `docker-compose ps` | `promotion-agent` **Up** |
-| Dashboard | Open http://localhost:5000 | Dashboard page loads |
+| Dashboard | Open http://localhost:5000 | Dashboard with 6 sections loads |
 | API | `curl http://localhost:5000/api/stats` | JSON, HTTP 200 |
-| Logs | `docker-compose logs --tail=30 promotion-agent` | No crash loop; “Monitoring” / “Checking for new posts” |
+| Inventory API | `curl http://localhost:5000/api/inventory` | JSON with items array |
+| Logs | `docker-compose logs --tail=30 promotion-agent` | No crash loop; "Monitoring" / "Checking for new posts" |
+| Inventory file | Check project folder for `article_inventory.md` | File exists after build |
 
 ---
 
-## Phase 5: Troubleshooting
+## Phase 6: Troubleshooting
 
 | Symptom | What to do |
 |--------|------------|
@@ -136,10 +174,13 @@ Step-by-step plan to deploy the Promotion Agent in Docker and confirm it is runn
 | Dashboard 502 / connection refused | Wait 10–20 s after start; check `docker-compose logs` for server errors; ensure port mapping is `5000:5000`. |
 | `/api/stats` 500 | Often DB or tables missing; ensure container has write access to mounted volume (e.g. `./data`, `./promotion_agent.db`). On Windows/OneDrive, see DEPLOYMENT.md for optional temp DB path. |
 | Agent not processing posts | Confirm `SUBSTACK_URL` in `.env` is the **feed** URL (e.g. `https://yoursubstack.substack.com/feed`); check logs for API (e.g. Anthropic) errors; ensure API key has credits. |
+| Dashboard prompts for login unexpectedly | `DASHBOARD_USERNAME` or `DASHBOARD_PASSWORD` is set in `.env`. Clear both to disable auth for local use. |
+| Inventory build fails | Confirm `SUBSTACK_URL` is your real Substack URL (not the placeholder). Check logs. Re-run — it's idempotent. |
+| Inventory shows 0 articles after build | Check that `SUBSTACK_URL` resolves to an active publication; check logs for API errors; verify Anthropic API key has credits. |
 
 ---
 
-## Phase 6: Stop and remove (optional)
+## Phase 7: Stop and remove (optional)
 
 - **Stop containers:**
   ```powershell
@@ -158,7 +199,8 @@ Step-by-step plan to deploy the Promotion Agent in Docker and confirm it is runn
 
 1. **Prerequisites:** Docker Desktop, `.env` with `SUBSTACK_URL` and `ANTHROPIC_API_KEY`.  
 2. **Deploy:** `docker-compose build` then `docker-compose up -d`.  
-3. **Verify:** Container up → http://localhost:5000 loads → `curl http://localhost:5000/api/stats` returns JSON → logs show agent and server running without crash loops.  
-4. **Ongoing:** Use `docker-compose logs -f promotion-agent` and the dashboard to confirm new posts are processed once the agent has run and Anthropic API has sufficient credits.
+3. **Verify:** Container up → http://localhost:5000 loads with 6 sections → `curl http://localhost:5000/api/stats` returns JSON → logs show agent and server running without crash loops.  
+4. **Build inventory:** Click "🔨 Build / Refresh Inventory" in the Article Inventory section (one-time; auto-updates on new posts thereafter).  
+5. **Ongoing:** Use `docker-compose logs -f promotion-agent` and the dashboard to confirm new posts are processed once the agent has run and Anthropic API has sufficient credits.
 
 For cloud deployment (Railway, Render, Fly.io, etc.), see **DEPLOYMENT.md**.

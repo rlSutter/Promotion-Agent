@@ -131,6 +131,16 @@ def main():
         leaderboard_ranking TEXT,
         raw_json TEXT
     )""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS article_inventory (
+        id TEXT PRIMARY KEY,
+        title TEXT,
+        subtitle TEXT,
+        url TEXT,
+        published_date TEXT,
+        topics TEXT,
+        core_mechanism TEXT,
+        added_date TEXT
+    )""")
     conn.commit()
     conn.close()
     print("Database created successfully.")

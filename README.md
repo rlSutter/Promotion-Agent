@@ -1,372 +1,458 @@
 # Blog Promotion Agent
 
-An autonomous agent that implements your "promote sentences, not articles" strategy for every blog post you publish.
+An autonomous agent that implements a "promote sentences, not articles" strategy for every Substack post you publish. It runs in the background, monitors your RSS feed, and drafts platform-specific promotional content for your review — so promotion takes 15 minutes instead of 45.
 
 ## What It Does
 
-Every time you publish a post on Substack, this agent automatically:
+Every time you publish a post on Substack, the agent automatically:
 
-1. **Extracts** the best "outward sentence" from your post
-2. **Routes** it to the optimal platform (LinkedIn, Substack Notes, or Bluesky)
+1. **Extracts** the best "outward sentence" — the spine of the post that stands alone
+2. **Routes** it to the right platform (LinkedIn, Substack Notes, or Bluesky) based on content type
 3. **Generates** a complete promotional post (not a teaser)
 4. **Creates** commenting suggestions for ecosystem engagement
-5. **Generates** weekly "start here" on-ramp posts
-6. **Presents** everything in a review dashboard for you to approve and post
+5. **Adds** the post to your searchable article inventory
+6. **Generates** weekly "start here" on-ramp posts every Monday
+7. **Presents** everything in a review dashboard for you to approve and post
 
-## Features
+You review, edit if needed, copy, paste, and mark done. No direct posting — you stay in control.
 
-### ✅ Daily Automation
-- Monitors your Substack RSS feed hourly
-- Extracts the "spine" sentence that stands alone
-- Routes based on content (power/bias → LinkedIn, ideas/frames → Substack Notes, playful → Bluesky)
-- Generates platform-native promotional posts
-- Creates commenting task suggestions
+---
 
-### ✅ Weekly Automation
-- Every Monday: generates "start here" on-ramp post
-- Suggests 3 posts for new readers (frame + situational + bridge)
+## Prerequisites
 
-### ✅ Review & Release Dashboard
-- Clean web interface to review all drafts
-- Edit promotional posts inline
-- Copy with one click
-- Mark as published to track what you've done
-- No direct platform posting (respects your workflow)
+Before you start, you need:
 
-### ✅ Activity Tracking
-- SQLite database tracks all posts and promotions
-- Knows what's pending, published, or skipped
-- Prevents duplicates
+- **A Substack publication** with a public RSS feed (`https://yourname.substack.com/feed`)
+- **An Anthropic API key** — get one free at [console.anthropic.com](https://console.anthropic.com/)
+- **Docker Desktop** (recommended) — [download here](https://www.docker.com/products/docker-desktop/); or Python 3.11+ if you prefer to run without Docker
 
-## Architecture
+That's it. No Substack API key, no OAuth setup, no database to provision.
 
-```
-Substack RSS Feed
-      ↓
-[Agent monitors every hour]
-      ↓
-[Claude extracts outward sentence]
-      ↓
-[Routes to platform based on content]
-      ↓
-[Generates promotional post]
-      ↓
-[Saves to database + dashboard JSON]
-      ↓
-[Web Dashboard] ← You review and approve
-      ↓
-[You copy/paste to platforms]
-      ↓
-[Mark as published in dashboard]
+---
+
+## Quick Start (Docker — 5 minutes)
+
+```bash
+# 1. Clone the repo
+git clone https://github.com/YOUR_USERNAME/promotion-agent.git
+cd promotion-agent
+
+# 2. Create your config file
+cp .env.example .env
+# Edit .env — at minimum set SUBSTACK_URL and ANTHROPIC_API_KEY
+
+# 3. Start the agent
+docker-compose up -d
+
+# 4. Open the dashboard
+# http://localhost:5000
 ```
 
-## Setup Instructions
+On first run, the agent checks your RSS feed immediately, then rechecks every hour. The dashboard is live at `http://localhost:5000`.
+
+### First-Time Setup (one-time after start)
+
+Build your article inventory to import your full publishing history:
+
+- **Via dashboard:** Click **🔨 Build / Refresh Inventory** in the Article Inventory section
+- **Via command line:**
+  ```bash
+  docker compose exec promotion-agent python agent.py --build-inventory
+  ```
+
+This costs ~$0.05–0.15 in API credits depending on how many articles you have. It's safe to re-run — already-imported articles are skipped.
+
+---
+
+## Configuration
+
+All configuration lives in `.env`. Copy `.env.example` to get started:
+
+```bash
+cp .env.example .env
+```
+
+### Required
+
+| Variable | Description | Example |
+|---|---|---|
+| `SUBSTACK_URL` | Your Substack RSS feed URL. Use `/feed`, not `/publish/home`. | `https://yourname.substack.com/feed` |
+| `ANTHROPIC_API_KEY` | Your API key from [console.anthropic.com](https://console.anthropic.com/) | `sk-ant-api03-...` |
+
+### Required for cloud / shared deployments
+
+| Variable | Description |
+|---|---|
+| `DASHBOARD_USERNAME` | Username for dashboard login (HTTP Basic Auth) |
+| `DASHBOARD_PASSWORD` | Password for dashboard login |
+
+> **If you deploy to a public URL (Railway, Render, Fly.io, etc.), you must set both of these.** The dashboard is open to anyone who can reach the URL if they are not set. For local-only use they can be left blank.
+
+### Optional
+
+| Variable | Default | Description |
+|---|---|---|
+| `ANTHROPIC_MODEL` | `claude-sonnet-4-20250514` | Claude model to use for all AI calls. See [AI Configuration](#ai-configuration) below. |
+| `CHECK_INTERVAL_MINUTES` | `60` | How often the agent checks for new posts |
+| `SUBSTACK_LINKEDIN_HANDLE` | *(none)* | Your LinkedIn handle — enables Substack profile stats (follower count, subscribers) in the Analytics section |
+| `SUBSTACK_API_KEY` | *(none)* | Substack Developer API key — leave blank for now; the field is ready for when Substack issues keys |
+| `PROMOTION_AGENT_DB` | `./promotion_agent.db` | Override the database path (useful on Windows/OneDrive where the default location may not be writable) |
+
+### Example `.env` for local use
+
+```
+SUBSTACK_URL=https://yourname.substack.com/feed
+ANTHROPIC_API_KEY=sk-ant-api03-...
+CHECK_INTERVAL_MINUTES=60
+```
+
+### Example `.env` for cloud deployment
+
+```
+SUBSTACK_URL=https://yourname.substack.com/feed
+ANTHROPIC_API_KEY=sk-ant-api03-...
+DASHBOARD_USERNAME=admin
+DASHBOARD_PASSWORD=choose-a-strong-password
+CHECK_INTERVAL_MINUTES=60
+```
+
+---
+
+## Setup Options
 
 ### Option 1: Docker (Recommended)
 
-**Prerequisites:**
-- Docker and Docker Compose installed
-- Anthropic API key ([get one here](https://console.anthropic.com/))
+Works on Windows, Mac, and Linux. Everything runs in a container — no Python environment to manage.
 
-**Steps:**
-
-1. Clone or download this directory
-
-2. Run the setup script:
-
-**Linux/Mac:**
 ```bash
-chmod +x setup.sh
-./setup.sh
-```
-
-**Windows (PowerShell):**
-```powershell
-.\setup.ps1
-```
-
-If `.env` does not exist, it is created automatically from `.env.example` the first time you run the agent or `docker-compose up`. Edit `.env` with your values:
-```
-SUBSTACK_URL=https://yoursubstack.substack.com/feed   # Use /feed, not /publish/home
-ANTHROPIC_API_KEY=sk-ant-your-key-here
-# Optional: Substack Developer API (profile stats). Add when Substack provides your API key.
-# SUBSTACK_API_KEY=
-# SUBSTACK_LINKEDIN_HANDLE=yourlinkedin   # e.g. johndoe from linkedin.com/in/johndoe
-```
-
-3. Start the agent:
-```bash
+# Start
 docker-compose up -d
+
+# Stop
+docker-compose down
+
+# View logs
+docker-compose logs -f promotion-agent
+
+# Rebuild after code changes
+docker-compose up -d --build
 ```
 
-5. Access the dashboard:
-```
-http://localhost:5000
-```
+Dashboard: `http://localhost:5000`
 
-The agent is now running in the background, checking for new posts every hour.
+### Option 2: Cloud Deployment
 
-### Option 2: Cloud Deployment (Railway, Render, Fly.io)
+Deploy to Railway, Render, or Fly.io for a persistent public URL. Full instructions in [DEPLOYMENT.md](DEPLOYMENT.md).
 
-**For Railway:**
+**Summary for Railway (easiest):**
+1. Fork this repo to your GitHub account
+2. Create a new Railway project from your fork
+3. Add environment variables (including `DASHBOARD_USERNAME` and `DASHBOARD_PASSWORD`)
+4. Railway auto-deploys; your dashboard URL appears under Settings → Domains
 
-1. Create new project from GitHub repo
-2. Add environment variables:
-   - `SUBSTACK_URL`
-   - `ANTHROPIC_API_KEY`
-3. Deploy
-4. Railway will provide a public URL for your dashboard
+### Option 3: Local Python (no Docker)
 
-**For Render:**
-
-1. Create new Web Service
-2. Connect your repo
-3. Set build command: `pip install -r requirements.txt`
-4. Set start command: `supervisord -c supervisord.conf`
-5. Add environment variables
-6. Deploy
-
-**For Fly.io:**
-
-1. Install flyctl CLI
-2. Run `fly launch`
-3. Set secrets: `fly secrets set ANTHROPIC_API_KEY=sk-ant-...`
-4. Deploy: `fly deploy`
-
-### Option 3: Local/VPS Python
-
-**Prerequisites:**
-- Python 3.11+
-- pip
-
-**Steps:**
-
-1. Install dependencies:
 ```bash
+# Install dependencies
 pip install -r requirements.txt
-```
 
-2. Set environment variables:
-```bash
-export SUBSTACK_URL="https://yoursubstack.substack.com/feed"
-export ANTHROPIC_API_KEY="sk-ant-your-key-here"
-```
+# Set environment variables
+export SUBSTACK_URL="https://yourname.substack.com/feed"
+export ANTHROPIC_API_KEY="sk-ant-api03-..."
 
-3. Run both processes (in separate terminals):
-```bash
-# Terminal 1: Agent
+# Terminal 1: run the agent
 python agent.py
 
-# Terminal 2: Dashboard server
+# Terminal 2: run the dashboard server
 python server.py
 ```
 
-4. Access dashboard at `http://localhost:5000`
+Dashboard: `http://localhost:5000`
+
+---
 
 ## Usage Workflow
 
 ### When You Publish
 
-1. **Agent detects new post** (within 1 hour)
-2. **Dashboard updates** with new promotion draft
-3. **You review** the generated content:
-   - Check the extracted outward sentence
-   - Review the promotional post
-   - Edit if needed (inline editing)
-4. **Copy and post** to the suggested platform
-5. **Mark as published** in dashboard
-6. **Follow commenting suggestions** (10 min that day)
+1. Agent detects new post (within 1 hour, or immediately on restart)
+2. Dashboard shows a new promotion draft
+3. Review the outward sentence and generated promotional post
+4. Edit inline if needed
+5. Copy → paste to the suggested platform → mark as published
+6. Follow the commenting suggestions (10 min)
 
-### Weekly Tasks
+New article is also **automatically added to the article inventory** — nothing extra to do.
 
-Every Monday morning, the agent generates:
-- "Start here" on-ramp post suggesting 3 posts for new readers
-- You review, copy, and post
+### Every Monday
 
-### The Dashboard
-
-**Main sections:**
-
-1. **Pending Promotions** - Review and approve promotional posts
-   - Platform badge shows where to post
-   - Outward sentence highlighted
-   - Edit inline if needed
-   - One-click copy
-   - Mark published when done
-
-2. **Commenting Tasks** - 10-minute ecosystem engagement
-   - Suggestions for where to comment
-   - What angle to contribute
-   - Helps you become familiar in the right rooms
-
-3. **Weekly Tasks** - On-ramp posts and larger efforts
-   - Generated every Monday
-   - Copy and post when ready
-
-## Customization
-
-### Change Platform Routing
-
-Edit `PLATFORM_ROUTING` in `agent.py`:
-
-```python
-PLATFORM_ROUTING = {
-    "linkedin": ["your", "keywords", "here"],
-    "substack_notes": ["different", "keywords"],
-    "bluesky": ["more", "keywords"],
-}
-```
-
-### Substack Developer API (optional)
-
-The agent gets **posts** from your Substack RSS feed. For **profile statistics** (follower count, free subscribers, leaderboard), you can use the [Substack Developer API](https://support.substack.com/hc/en-us/articles/45099095296916-Substack-Developer-API). It is queried by your **LinkedIn handle** (e.g. `johndoe` from `linkedin.com/in/johndoe`). Add to `.env` when ready:
-
-- **SUBSTACK_LINKEDIN_HANDLE** – Your LinkedIn handle so the agent can fetch your Substack profile stats. When set, the agent fetches profile data daily and the dashboard shows followers and subscribers in the Analytics section.
-- **SUBSTACK_API_KEY** – Leave empty for now; add when Substack provides an API key (e.g. for authenticated requests). The code sends it as `Authorization: Bearer <key>` when set.
-
-### Adjust Check Interval
-
-Change in `.env`:
-```
-CHECK_INTERVAL_MINUTES=30  # Check every 30 minutes instead of 60
-```
-
-### Modify Promotional Post Style
-
-Edit the prompt in `generate_promotional_post()` method in `agent.py`.
-
-### Add New Platforms
-
-1. Add platform to `PLATFORM_ROUTING` dictionary
-2. Add platform-specific guidelines in `generate_promotional_post()`
-3. Update dashboard CSS for new platform badge color
-
-## Database Schema
-
-SQLite database (`promotion_agent.db`) with tables:
-
-- **posts** - All discovered blog posts (from RSS)
-- **promotions** - Generated promotional content per post
-- **weekly_tasks** - On-ramp posts and weekly efforts
-- **activity_log** - Commenting suggestions and completed activities
-- **analytics_events** - Dashboard clicks and engagement
-- **substack_profile** - Cached Substack Developer API profile (followers, subscribers) when `SUBSTACK_LINKEDIN_HANDLE` is set
-
-## Costs
-
-**Anthropic API usage:**
-- ~$0.02-0.05 per post processed
-- Expect $2-5/month if publishing 2-3 posts per week
-- Uses Claude Sonnet 4 for quality extraction and generation
-
-**Infrastructure:**
-- Free tier sufficient on Railway, Render, or Fly.io
-- ~$5/month for basic cloud hosting if needed
-
-## Monitoring
-
-### Check Agent Health
-
-```bash
-# Docker
-docker-compose logs -f promotion-agent
-
-# View stats
-curl http://localhost:5000/api/stats
-```
-
-### Manual Database Queries
-
-**All platforms (Python has sqlite3 built in):**
-```powershell
-python db_shell.py
-```
-Then type SQL, e.g. `SELECT * FROM promotions WHERE status = 'pending_review';` — type `.quit` to exit.
-
-**If you have the sqlite3 CLI installed** (e.g. Mac/Linux, or [SQLite for Windows](https://www.sqlite.org/download.html)):
-```bash
-sqlite3 promotion_agent.db
-# See pending promotions: SELECT * FROM promotions WHERE status = 'pending_review';
-# See all posts: SELECT title, published_date FROM posts ORDER BY published_date DESC;
-```
-
-## Debugging server.py
-
-If the server fails to start or you want to step through code:
-
-1. **Run from the project folder** (paths are relative):
-   ```powershell
-   cd "path\to\Promotion Agent"
-   python server.py
-   ```
-   On startup the server prints its working directory and DB path so you can confirm it found files.
-
-2. **Use the debugger in Cursor/VS Code**
-   - Open **Run and Debug** (Ctrl+Shift+D)
-   - Choose **"Debug server.py"**
-   - Set breakpoints in `server.py` (click in the gutter)
-   - Press F5 to start; the server will stop on breakpoints
-
-3. **Common failures**
-   - **"unable to open database file"** — Server now runs from its script directory and uses an absolute DB path; if it still fails, ensure the agent has run once so `promotion_agent.db` exists.
-   - **Database not created** — The agent now creates the DB and tables before initializing the Anthropic client, so the DB should be created even if the API key is missing. If it still isn't, run `python create_db.py` to create it, then run the agent again.
-   - **Missing tables** — `/api/stats` no longer crashes if `activity_log` (or other tables) don't exist yet; it returns empty counts.
-   - **Port 5000 in use** — Change the port in the last line of `server.py` (e.g. `port=5001`) or stop the other process using 5000.
-
-## Troubleshooting
-
-**Agent not detecting posts:**
-- Use the **feed** URL (`https://yoursubstack.substack.com/feed`), not the publish URL (`/publish/home`—that page is private and returns no RSS).
-- Verify: `curl https://yoursubstack.substack.com/feed` should return XML.
-- Check agent logs for errors.
-- Ensure agent is running: `docker-compose ps`.
-
-**Dashboard shows nothing / Permission denied:**
-- Wait up to 1 hour for first check (or restart agent to trigger immediate check)
-- Verify `review_dashboard.json` exists and is readable
-- **Permission denied** on Windows/OneDrive: The server now falls back to an empty dashboard if it can't read the file. To fix: right-click the project folder → "Always keep on this device" (OneDrive); or ensure the file isn't open/locked elsewhere; or clear Read-only on the file.
-- Check browser console for errors
-
-**API key errors:**
-- Verify `ANTHROPIC_API_KEY` is set correctly
-- Check key hasn't expired at https://console.anthropic.com/
-
-**Can't access dashboard:**
-- Ensure port 5000 isn't blocked by firewall
-- For cloud deployment, use the provided public URL
-- Check server logs: `docker-compose logs server`
-
-## Security Notes
-
-- Never commit `.env` file (already in `.gitignore`)
-- API key gives access to your Anthropic account - keep it secret
-- Dashboard has no authentication - use firewall rules if hosting publicly
-- Consider adding basic auth if deploying to public cloud
-
-## Future Enhancements (Optional)
-
-Potential additions you could make:
-
-- [ ] Direct platform API integration (auto-posting)
-- [ ] Email notifications when new promotions ready
-- [ ] Analytics tracking (clicks, engagement)
-- [ ] A/B testing different outward sentences
-- [ ] Mobile app for review-on-the-go
-- [ ] Slack/Discord notifications
-- [ ] Multi-user support for team blogs
-
-## Support
-
-For issues or questions:
-1. Check the troubleshooting section above
-2. Review agent logs: `docker-compose logs`
-3. Check database state: `python db_shell.py` (or sqlite3 CLI if installed)
-4. Verify environment variables are set correctly
-
-## License
-
-Use freely for your own blog promotion. Modify as needed.
+The agent generates a "start here" on-ramp post suggesting 3 articles for new readers. Review, copy, and post.
 
 ---
 
-**Pro tip:** The agent gets smarter as it processes more posts. Review the first few promotional posts closely and provide feedback by editing them. The patterns you establish will inform future generations.
+## The Dashboard
+
+Access at `http://localhost:5000` (or your cloud URL). All six sections are **collapsible** — click any heading. State is saved in your browser and restored on the next visit.
+
+| Section | What's here |
+|---|---|
+| 📊 Analytics | Copy/publish/skip counts over 7 and 30 days; Substack profile stats if `SUBSTACK_LINKEDIN_HANDLE` is configured |
+| 📝 Pending Promotions | Drafted promotional posts to review, edit, copy, and mark published |
+| 💬 Commenting Tasks | Suggestions for where to comment and what angle to take |
+| 📅 Weekly Tasks | Monday on-ramp posts for new readers |
+| 📚 Article Inventory | Searchable catalog of every published article (keyword, topic, year filters) |
+| 📦 Archive | Published and skipped items; recover any item back to pending |
+
+---
+
+## AI Configuration
+
+The agent uses the [Anthropic API](https://console.anthropic.com/) for all content generation. No other AI service is required.
+
+### Model
+
+The default model is **`claude-sonnet-4-20250514`** (Claude Sonnet 4). This is the recommended choice: it produces high-quality promotional copy and handles nuanced extraction well, at a cost of roughly $0.03–0.05 per post.
+
+To use a different model, set `ANTHROPIC_MODEL` in `.env`:
+
+```
+ANTHROPIC_MODEL=claude-sonnet-4-20250514
+```
+
+Available Claude models and their IDs are listed in the [Anthropic documentation](https://docs.anthropic.com/en/docs/about-claude/models). Haiku models cost less but produce noticeably shorter, less polished output; Opus models cost more with marginal improvement for this workload. Sonnet is the right balance.
+
+### What the AI does
+
+The agent makes five distinct API calls per new post, plus one on demand for the weekly task:
+
+| Call | Method | Purpose | Max tokens |
+|---|---|---|---|
+| Outward sentence extraction | `extract_outward_sentence()` | Finds the single "spine" sentence that stands alone — the core claim of the post | 200 |
+| Promotional post generation | `generate_promotional_post()` | Writes a platform-native post (claim → practical consequence → reflection → link) | 500 |
+| Commenting suggestions | `generate_commenting_tasks()` | Suggests 2–3 topic areas and angles for ecosystem commenting | 400 |
+| Article metadata extraction | `extract_article_metadata()` | Extracts subtitle, 3–6 topic tags, and a one-sentence core mechanism summary for the inventory | 300 |
+| Weekly on-ramp post | `generate_weekly_onramp_post()` | Every Monday, selects 3 articles (frame / situational / bridge) and drafts a "start here" post | 600 |
+
+Platform routing is **not** AI-based — it uses keyword matching against `PLATFORM_ROUTING` in `agent.py` (fast, free, predictable).
+
+### Platform tone guidelines
+
+Each platform gets a different brief passed to the promotional post prompt:
+
+| Platform | Tone brief |
+|---|---|
+| LinkedIn | Professional, outcomes-focused, 2–3 sentences |
+| Substack Notes | Thoughtful, complete idea, slightly more casual |
+| Bluesky | Playful, gift-like, short and punchy |
+
+Edit the `platform_guidelines` dict in `generate_promotional_post()` in `agent.py` to change these.
+
+### Customizing the prompts
+
+All prompts are plain Python f-strings in `agent.py`. The key methods and what to edit:
+
+- **Outward sentence style** — `extract_outward_sentence()`: the three sentence shapes listed in the prompt (`If X then Y`, `People call it Z but it's W`, `This isn't about A it's about B`). Add or remove shapes here.
+- **Promotional post structure** — `generate_promotional_post()`: the 4-step structure (claim → practical → reflection → link) and the constraint list. This is where to change the voice, add platform-specific rules, or adjust length.
+- **Commenting suggestions** — `generate_commenting_tasks()`: change how many suggestions are requested or what format they're returned in.
+- **Inventory metadata** — `extract_article_metadata()`: add or remove fields from the JSON schema. If you add a field, also add the corresponding column to the `article_inventory` table in `init_database()`.
+- **Weekly on-ramp** — `generate_weekly_onramp_post()`: change the three post types (frame / situational / bridge), the intro language, or how many posts are included.
+
+### API key and billing
+
+Get your key at [console.anthropic.com](https://console.anthropic.com/). New accounts receive free credits. Usage is charged per token (input + output combined).
+
+Estimated monthly cost at 2–3 posts/week:
+- ~$0.03–0.05 per post × 10 posts/month ≈ **$0.30–0.50/month** for post processing
+- One-time inventory build for a full back-catalog: **$0.05–0.15**
+- Weekly on-ramp posts: **~$0.10/month**
+- **Total: roughly $2–5/month** at regular publishing cadence
+
+The agent logs an explicit error message with a link to the billing page if your credit balance is too low.
+
+---
+
+## Customization
+
+### Platform routing
+
+The agent routes content to platforms based on keywords in the post. Edit `PLATFORM_ROUTING` in `agent.py`:
+
+```python
+PLATFORM_ROUTING = {
+    "linkedin": ["leadership", "power", "bias", "career", "management"],
+    "substack_notes": ["ideas", "frames", "systems", "thinking"],
+    "bluesky": ["playful", "culture", "gaming", "fun"],
+}
+```
+
+### Check interval
+
+```
+CHECK_INTERVAL_MINUTES=30
+```
+
+### Promotional post style
+
+Edit the Claude prompt in `generate_promotional_post()` in `agent.py`.
+
+### Add a new platform
+
+1. Add the platform and its keywords to `PLATFORM_ROUTING`
+2. Add platform-specific tone guidelines in `generate_promotional_post()`
+3. Add a CSS badge color in `dashboard.html`
+
+### Substack profile stats (optional)
+
+Set `SUBSTACK_LINKEDIN_HANDLE` to your LinkedIn handle (e.g. `johndoe` from `linkedin.com/in/johndoe`). The agent fetches your Substack follower count and subscriber stats daily and displays them in the Analytics section.
+
+---
+
+## Costs
+
+**Anthropic API:**
+- ~$0.03–0.05 per post processed (sentence extraction + promo + commenting suggestions + inventory metadata)
+- One-time inventory build: ~$0.05–0.15 depending on back-catalog size
+- Publishing 2–3×/week ≈ $2–5/month total
+
+**Infrastructure:**
+- Local: free
+- Railway / Render / Fly.io: free tier is sufficient to start; ~$5–7/month for always-on paid tier
+
+---
+
+## Monitoring
+
+```bash
+# Follow live logs (Docker)
+docker compose logs -f promotion-agent
+
+# Check API health
+curl http://localhost:5000/api/stats
+
+# Check article inventory
+curl http://localhost:5000/api/inventory
+```
+
+### Manual triggers
+
+```bash
+# Force an RSS check right now
+docker compose exec promotion-agent python -c "from agent import PromotionAgent; PromotionAgent().check_for_new_posts()"
+
+# Regenerate dashboard JSON
+docker compose exec promotion-agent python -c "from agent import PromotionAgent; PromotionAgent().generate_review_dashboard()"
+
+# Build / refresh article inventory
+docker compose exec promotion-agent python agent.py --build-inventory
+
+# Re-export article_inventory.md without API calls
+docker compose exec promotion-agent python -c "from agent import PromotionAgent; PromotionAgent().export_inventory_to_markdown()"
+```
+
+### Database queries
+
+```bash
+# Interactive SQL shell (no sqlite3 CLI required)
+python db_shell.py
+```
+
+```sql
+-- Pending promotions
+SELECT posts.title, p.platform, p.created_date
+FROM promotions p JOIN posts ON p.post_id = posts.id
+WHERE p.status = 'pending_review';
+
+-- Article inventory
+SELECT title, topics, core_mechanism FROM article_inventory ORDER BY published_date DESC;
+```
+
+---
+
+## Troubleshooting
+
+**Agent not detecting posts**
+- Make sure `SUBSTACK_URL` ends in `/feed`, not `/publish/home`
+- Verify the feed works: `curl https://yourname.substack.com/feed` should return XML
+- Check logs: `docker compose logs promotion-agent`
+
+**Dashboard is empty after starting**
+- The agent checks immediately on startup, but processing takes a moment. Refresh after 30 seconds.
+- Or trigger manually: `docker compose exec promotion-agent python -c "from agent import PromotionAgent; PromotionAgent().check_for_new_posts()"`
+
+**Dashboard asks for a username/password I didn't set**
+- `DASHBOARD_USERNAME` and/or `DASHBOARD_PASSWORD` are set in your `.env`. Clear them (set both to empty or remove the lines) if you're running locally and don't want auth.
+
+**"unable to open database file" on Windows/OneDrive**
+- Right-click the project folder → "Always keep on this device"
+- Or set `PROMOTION_AGENT_DB` in `.env` to a path outside OneDrive (e.g. `C:/Temp/promotion_agent.db`)
+- Or run `python create_db.py` to create the database manually
+
+**Inventory build fails or returns 0 articles**
+- Confirm `SUBSTACK_URL` points to your real publication, not the placeholder
+- Check API key credits at [console.anthropic.com](https://console.anthropic.com/)
+- The build is idempotent — safe to retry
+
+**Port 5000 already in use**
+- Change the host port in `docker-compose.yml` (e.g. `"5001:5000"`) or stop the other process
+
+**API key errors**
+- Verify your key at [console.anthropic.com](https://console.anthropic.com/)
+
+---
+
+## Database Schema
+
+SQLite (`promotion_agent.db`) with seven tables:
+
+| Table | Contents |
+|---|---|
+| `posts` | All discovered blog posts from RSS feed |
+| `promotions` | Generated promotional content per post |
+| `weekly_tasks` | Monday on-ramp posts |
+| `activity_log` | Commenting suggestions |
+| `analytics_events` | Dashboard interaction tracking |
+| `substack_profile` | Cached profile stats when `SUBSTACK_LINKEDIN_HANDLE` is set |
+| `article_inventory` | All published articles: title, subtitle, URL, date, topics, core mechanism |
+
+---
+
+## Project Structure
+
+```
+promotion-agent/
+├── agent.py              # Core agent: RSS monitor, AI extraction, scheduling
+├── server.py             # Flask dashboard server and REST API
+├── dashboard.html        # Single-page review interface
+├── create_db.py          # Standalone DB initializer (run if agent hasn't run yet)
+├── db_shell.py           # Interactive SQL shell
+├── requirements.txt      # Python dependencies
+├── Dockerfile
+├── docker-compose.yml
+├── supervisord.conf      # Runs agent.py + server.py inside the container
+├── .env.example          # Configuration template
+├── .gitignore
+├── article_inventory.md  # Auto-generated inventory export
+├── README.md
+├── DEPLOYMENT.md         # Full cloud deployment guide (Railway, Render, Fly.io, etc.)
+├── QUICK_REFERENCE.md    # Daily workflow cheat sheet
+└── EXAMPLES.md           # Sample generated output
+```
+
+---
+
+## Security
+
+- Never commit `.env` — it is listed in `.gitignore`
+- Your Anthropic API key gives billing access to your account; keep it secret
+- **Set `DASHBOARD_USERNAME` and `DASHBOARD_PASSWORD` for any deployment reachable from the internet.** Without them the dashboard and all API endpoints are publicly accessible to anyone with the URL.
+- The dashboard has no rate limiting — use firewall rules or your cloud platform's access controls if you need additional protection
+
+---
+
+## License
+
+MIT — use freely, modify as needed, no warranty.
+
+---
+
+**Pro tip:** Review the first few generated promotional posts closely and edit them to match your voice. The patterns you establish inform future generations.

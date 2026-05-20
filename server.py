@@ -23,14 +23,35 @@ if not _env_path.exists() and _env_example.exists():
     print("Created .env from .env.example. Edit .env with your SUBSTACK_URL and ANTHROPIC_API_KEY, then restart.")
 load_dotenv()
 
-from flask import Flask, jsonify, send_file, request
-from flask_cors import CORS
+from flask import Flask, jsonify, send_file, request, Response
+import hmac
 import json
 import sqlite3
+import threading
 from datetime import datetime
 
 app = Flask(__name__)
-CORS(app)
+
+_DASHBOARD_USER = os.getenv("DASHBOARD_USERNAME", "")
+_DASHBOARD_PASS = os.getenv("DASHBOARD_PASSWORD", "")
+_AUTH_ENABLED = bool(_DASHBOARD_USER or _DASHBOARD_PASS)
+
+def _check_auth(username: str, password: str) -> bool:
+    user_ok = hmac.compare_digest(username.encode(), _DASHBOARD_USER.encode())
+    pass_ok = hmac.compare_digest(password.encode(), _DASHBOARD_PASS.encode())
+    return user_ok and pass_ok
+
+@app.before_request
+def _require_auth():
+    if not _AUTH_ENABLED:
+        return
+    auth = request.authorization
+    if not auth or not _check_auth(auth.username, auth.password):
+        return Response(
+            "Authentication required.",
+            401,
+            {"WWW-Authenticate": 'Basic realm="Promotion Dashboard"'},
+        )
 
 DB_PATH = os.getenv("PROMOTION_AGENT_DB") or str(_script_dir / "promotion_agent.db")
 # Dashboard JSON lives next to the DB (so when DB is in temp, dashboard is writable too)
@@ -382,9 +403,94 @@ def stats():
     })
 
 
+_inventory_build_state = {"running": False, "last_run": None, "count": 0, "error": None}
+_inventory_build_lock = threading.Lock()
+
+
+def _run_inventory_build_thread():
+    global _inventory_build_state
+    with _inventory_build_lock:
+        _inventory_build_state["running"] = True
+        _inventory_build_state["error"] = None
+    try:
+        from agent import PromotionAgent
+        agent = PromotionAgent()
+        agent.build_article_inventory()
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("SELECT COUNT(*) FROM article_inventory")
+        count = c.fetchone()[0]
+        conn.close()
+        with _inventory_build_lock:
+            _inventory_build_state["running"] = False
+            _inventory_build_state["last_run"] = datetime.now().isoformat()
+            _inventory_build_state["count"] = count
+    except Exception as e:
+        with _inventory_build_lock:
+            _inventory_build_state["running"] = False
+            _inventory_build_state["error"] = str(e)
+        print(f"[Inventory] Build failed: {e}", flush=True)
+
+
+@app.route('/api/inventory')
+def get_inventory():
+    """Return all article inventory items as JSON."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, title, subtitle, url, published_date, topics, core_mechanism, added_date
+            FROM article_inventory
+            ORDER BY published_date DESC
+        """)
+        rows = cursor.fetchall()
+        conn.close()
+        items = [
+            {
+                "id": r[0], "title": r[1], "subtitle": r[2], "url": r[3],
+                "published_date": r[4], "topics": r[5], "core_mechanism": r[6],
+                "added_date": r[7],
+            }
+            for r in rows
+        ]
+        return jsonify({"items": items, "count": len(items)})
+    except sqlite3.OperationalError as e:
+        return jsonify({"items": [], "count": 0, "error": str(e)})
+
+
+@app.route('/api/inventory/build', methods=['POST'])
+def trigger_inventory_build():
+    """Start a background inventory build pass (fetches all Substack posts via API)."""
+    with _inventory_build_lock:
+        if _inventory_build_state["running"]:
+            return jsonify({"status": "already_running"})
+    t = threading.Thread(target=_run_inventory_build_thread, daemon=True)
+    t.start()
+    return jsonify({"status": "started"})
+
+
+@app.route('/api/inventory/status')
+def inventory_build_status():
+    """Return the current state of the inventory build."""
+    with _inventory_build_lock:
+        return jsonify(dict(_inventory_build_state))
+
+
+@app.route('/api/inventory/export', methods=['POST'])
+def export_inventory_markdown():
+    """Re-export article_inventory.md from current DB state."""
+    try:
+        from agent import PromotionAgent
+        agent = PromotionAgent()
+        agent.export_inventory_to_markdown()
+        return jsonify({"status": "success"})
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
 if __name__ == '__main__':
     print("=== Promotion Dashboard Server ===")
     print(f"Working directory: {os.getcwd()}")
     print(f"DB path: {DB_PATH}")
     print("Dashboard: http://localhost:5000")
-    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
+    app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)

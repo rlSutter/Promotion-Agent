@@ -1,225 +1,195 @@
 # Deployment Guide
 
-Instructions for running the Blog Promotion Agent locally (Docker) and deploying to cloud platforms.
+Step-by-step instructions for running the Blog Promotion Agent locally and deploying to cloud platforms.
+
+> **Authentication note:** Any deployment reachable from the internet requires `DASHBOARD_USERNAME` and `DASHBOARD_PASSWORD` to be set. Without them the dashboard is open to anyone with the URL. Local-only deployments can leave these blank.
 
 ---
 
 ## Local Deployment (Docker)
 
-**Best for:** Testing before cloud deploy, development, or running on your own machine.
+**Best for:** Personal use on your own machine, testing before cloud deploy.
 
 **Pros:** No cloud account needed, full control, data stays on your machine, free  
-**Cons:** Your computer must be on for the agent to run; no public URL unless you expose port 5000
+**Cons:** Your computer must be on for the agent to run; no public URL by default
 
-**Full plan:** For a step-by-step deploy and verification checklist, see **[DOCKER_DEPLOYMENT_PLAN.md](DOCKER_DEPLOYMENT_PLAN.md)**.
+For a step-by-step verification checklist see [DOCKER_DEPLOYMENT_PLAN.md](DOCKER_DEPLOYMENT_PLAN.md).
 
 ### Prerequisites
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (includes Docker and Docker Compose)  
-- Windows: Install Docker Desktop for Windows and ensure WSL 2 is enabled if prompted  
-- Mac: Install Docker Desktop for Mac
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — includes Docker and Docker Compose
+  - Windows: enable WSL 2 if prompted during install
+- An Anthropic API key from [console.anthropic.com](https://console.anthropic.com/)
+- Your Substack RSS feed URL (e.g. `https://yourname.substack.com/feed`)
 
 ### Steps
-                        1. **Clone or open the project**
-   ```powershell
-   cd "path\to\Promotion Agent"
+
+1. **Clone the repo**
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/promotion-agent.git
+   cd promotion-agent
    ```
 
-2. **Create and edit `.env`**
-   - If `.env` does not exist, it is created automatically from `.env.example` the first time you run the agent or server (e.g. `docker-compose up` or `python agent.py`).
-   - Alternatively, run the setup script to create `.env` interactively:
-     ```powershell
-     # Windows (PowerShell)
-     .\setup.ps1
+2. **Create your config file**
+   ```bash
+   cp .env.example .env
+   ```
+   Then edit `.env`:
+   ```
+   SUBSTACK_URL=https://yourname.substack.com/feed
+   ANTHROPIC_API_KEY=sk-ant-api03-...
+   # Leave DASHBOARD_USERNAME / DASHBOARD_PASSWORD blank for local use
+   ```
 
-     # Mac/Linux
-     ./setup.sh
-     ```
-
-3. **Edit `.env` with your values**
-   - **SUBSTACK_URL** — Your Substack RSS feed URL, e.g. `https://yoursubstack.substack.com/feed`
-   - **ANTHROPIC_API_KEY** — Your API key from [console.anthropic.com](https://console.anthropic.com/)
-   - **CHECK_INTERVAL_MINUTES** — Optional; default is `60`
-
-4. **Build and run**
+3. **Start the agent**
    ```powershell
    docker-compose up -d
    ```
-   The first run builds the image, then starts the agent and dashboard.  
+   The first run builds the Docker image (a few minutes), then starts the agent and dashboard server.  
    Dashboard: **http://localhost:5000**
 
-5. **Run in foreground (optional)**  
-   To watch logs while testing:
+4. **Build the article inventory** (one-time, for historical posts)
+   - Click **🔨 Build / Refresh Inventory** in the Article Inventory section, **or**
+   ```bash
+   docker compose exec promotion-agent python agent.py --build-inventory
+   ```
+   Cost: ~$0.05–0.15 depending on back-catalog size. Idempotent — safe to re-run.
+
+5. **Run in foreground** (useful for watching startup logs)
    ```powershell
    docker-compose up
    ```
-   Stop with **Ctrl+C**.
+   Stop with **Ctrl+C**, then use `docker-compose up -d` for background mode.
 
 ### Useful commands
 
 | Command | Purpose |
 |--------|--------|
-| `docker-compose logs -f promotion-agent` | Follow agent and server logs |
-| `docker-compose ps` | See if the container is running |
-| `docker-compose down` | Stop and remove the container |
-| `curl http://localhost:5000/api/stats` | Check dashboard API / health |
+| `docker-compose logs -f promotion-agent` | Follow live logs |
+| `docker-compose ps` | Check container status |
+| `docker-compose down` | Stop and remove container |
+| `docker-compose up -d --build` | Rebuild image after code changes |
+| `curl http://localhost:5000/api/stats` | Check API health |
 
 ### Data persistence
 
-Docker Compose mounts these from your project folder so data survives restarts:
+These files are mounted from your project folder so data survives container restarts:
 
-- `./data` — Application data directory  
-- `./promotion_agent.db` — SQLite database  
-- `./review_dashboard.json` — Dashboard state  
+- `./promotion_agent.db` — SQLite database
+- `./review_dashboard.json` — Dashboard state
+- `./article_inventory.md` — Exported inventory
 
-Do not commit `.env` or secrets; `.env` is listed in `.gitignore`.
+Do not commit `.env`; it is in `.gitignore`.
 
 ---
 
-## Railway (Recommended - Easiest for Cloud)
+## Railway (Recommended for Cloud)
 
-**Pros:** Free tier, automatic deployments, built-in domain, excellent for beginners
-**Cons:** Database not persistent across deploys on free tier (use external DB for production)
+**Pros:** Free tier, automatic deploys from GitHub, built-in HTTPS domain, easy setup  
+**Cons:** SQLite database is not persistent across deploys on free tier (use volumes on paid tier)
 
-### Steps:
+### Steps
 
-1. **Push to GitHub**
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git remote add origin https://github.com/rlSutter/Promotion-Agent/promotion-agent.git
-   git push -u origin main
-
-   git init
-   git remote add origin https://github.com/rlSutter/Promotion-Agent.git
-   git add .
-   git commit -m "Initial commit"
-   git branch -M main
-   git push -u origin main
-
-   ```
-
-2. **Sign up for Railway**
-   - Go to https://railway.app
-   - Sign up with GitHub
-
-3. **Create New Project**
-   - Click "New Project"
-   - Select "Deploy from GitHub repo"
-   - Choose your repository
-
-4. **Configure Environment**
-   - Click on your service
-   - Go to "Variables" tab
-   - Add variables:
+1. **Fork and push to GitHub**
+   - Fork this repo to your own GitHub account
+   - Or push your local copy:
+     ```bash
+     git remote add origin https://github.com/YOUR_USERNAME/promotion-agent.git
+     git push -u origin main
      ```
-     SUBSTACK_URL=https://yoursubstack.substack.com/feed
-     ANTHROPIC_API_KEY=sk-ant-your-key-here
+
+2. **Sign up for Railway** at [railway.app](https://railway.app) using GitHub
+
+3. **Create a new project**
+   - Click **New Project** → **Deploy from GitHub repo**
+   - Select your fork
+
+4. **Add environment variables**
+   - Click your service → **Variables** tab
+   - Add all required variables:
+     ```
+     SUBSTACK_URL=https://yourname.substack.com/feed
+     ANTHROPIC_API_KEY=sk-ant-api03-...
+     DASHBOARD_USERNAME=admin
+     DASHBOARD_PASSWORD=choose-a-strong-password
      CHECK_INTERVAL_MINUTES=60
      ```
 
-5. **Configure Port**
-   - Railway auto-detects port 5000
-   - No action needed
+5. **Deploy** — Railway builds and deploys automatically. Get your URL from **Settings → Domains**.
 
-6. **Deploy**
-   - Railway automatically deploys
-   - Wait for build to complete
-   - Get your URL from "Settings" → "Domains"
+6. **Build article inventory** — Open your Railway URL and click **🔨 Build / Refresh Inventory**.
 
-7. **Access Dashboard**
-   - Visit your Railway URL
-   - Dashboard should be live
+### Making the database persistent
 
-### Making It Persistent:
+SQLite data is lost on each redeploy unless you use a volume:
 
-To keep your database across deploys:
-
-1. Add Railway Postgres plugin
-2. Update `agent.py` to use Postgres instead of SQLite
-3. Or: Use Railway volumes (paid feature)
+- **Paid plan:** Add a Railway volume and set `PROMOTION_AGENT_DB=/data/promotion_agent.db`
+- **Free plan:** Accept that you'll rebuild the inventory after each deploy, or migrate to PostgreSQL
 
 ---
 
 ## Render
 
-**Pros:** Free tier with persistent disk, PostgreSQL included
-**Cons:** Apps sleep after 15 min of inactivity on free tier
+**Pros:** Free tier with 1 GB persistent disk, no data loss  
+**Cons:** Free tier sleeps after 15 min of inactivity
 
-### Steps:
+### Steps
 
-1. **Push to GitHub** (same as Railway)
+1. **Fork and push to GitHub** (same as Railway step 1)
 
-2. **Sign up for Render**
-   - Go to https://render.com
-   - Sign up with GitHub
+2. **Sign up for Render** at [render.com](https://render.com) using GitHub
 
-3. **Create Web Service**
-   - Click "New +"
-   - Select "Web Service"
+3. **Create a Web Service**
+   - Click **New +** → **Web Service**
    - Connect your GitHub repo
+   - Set:
+     - Environment: **Docker**
+     - Branch: **main**
+     - Region: closest to you
 
-4. **Configure Service**
-   - Name: `promotion-agent`
-   - Environment: `Docker`
-   - Branch: `main`
-   - Region: Choose closest to you
-
-5. **Set Environment Variables**
-   - Add variables:
-     ```
-     SUBSTACK_URL=https://yoursubstack.substack.com/feed
-     ANTHROPIC_API_KEY=sk-ant-your-key-here
-     ```
-
-6. **Add Persistent Disk** (Important!)
-   - Scroll to "Disk"
-   - Click "Add Disk"
-   - Name: `data`
-   - Mount Path: `/app/data`
-   - Size: 1GB (free tier)
-
-7. **Update docker-compose.yml**
-   ```yaml
-   volumes:
-     - /app/data:/app/data
+4. **Add environment variables**
+   ```
+   SUBSTACK_URL=https://yourname.substack.com/feed
+   ANTHROPIC_API_KEY=sk-ant-api03-...
+   DASHBOARD_USERNAME=admin
+   DASHBOARD_PASSWORD=choose-a-strong-password
    ```
 
-8. **Deploy**
-   - Click "Create Web Service"
-   - Wait for build
-   - Get URL from dashboard
+5. **Add a persistent disk**
+   - Scroll to **Disk** → **Add Disk**
+   - Name: `data`, Mount path: `/app/data`, Size: 1 GB
 
-### Keeping It Awake:
+6. **Deploy** — click **Create Web Service**. Your URL appears in the dashboard.
 
-Free tier sleeps after 15 min. Options:
+7. **Build article inventory** — Open your Render URL and click **🔨 Build / Refresh Inventory**.
 
-1. **Cron job to ping it:**
-   ```bash
-   # Add to crontab
-   */10 * * * * curl https://your-app.onrender.com/api/stats
-   ```
+### Keeping it awake on the free tier
 
-2. **Upgrade to paid tier** ($7/month, never sleeps)
+The free tier sleeps after 15 minutes of inactivity. Options:
+
+- Add a cron job (from any server or service) to ping the health endpoint every 10 minutes:
+  ```
+  */10 * * * * curl -s https://your-app.onrender.com/api/stats
+  ```
+- Upgrade to the paid tier ($7/month) for always-on
 
 ---
 
 ## Fly.io
 
-**Pros:** Great free tier, persistent volumes, runs anywhere
-**Cons:** Requires CLI tool, more technical
+**Pros:** Generous free tier, persistent volumes, global regions, full CLI control  
+**Cons:** Requires the `flyctl` CLI; more setup steps than Railway/Render
 
-### Steps:
+### Steps
 
 1. **Install flyctl**
    ```bash
    # Mac
    brew install flyctl
-   
+
    # Linux
    curl -L https://fly.io/install.sh | sh
-   
+
    # Windows
    powershell -Command "iwr https://fly.io/install.ps1 -useb | iex"
    ```
@@ -229,24 +199,19 @@ Free tier sleeps after 15 min. Options:
    flyctl auth signup
    ```
 
-3. **Create fly.toml**
+3. **Initialize the app**
    ```bash
    flyctl launch
    ```
-   
-   When prompted:
-   - App name: `your-promotion-agent`
-   - Region: Choose closest
-   - PostgreSQL: No (we use SQLite)
-   - Redis: No
+   When prompted: pick an app name and region; answer No to PostgreSQL and Redis.
 
-4. **Edit fly.toml**
+4. **Edit `fly.toml`**
    ```toml
    app = "your-promotion-agent"
    primary_region = "sjc"
 
    [build]
-   
+
    [http_service]
      internal_port = 5000
      force_https = true
@@ -264,15 +229,17 @@ Free tier sleeps after 15 min. Options:
      destination = "/app/data"
    ```
 
-5. **Create Volume**
+5. **Create a persistent volume**
    ```bash
    flyctl volumes create data --size 1
    ```
 
-6. **Set Secrets**
+6. **Set secrets** (never put these in `fly.toml` or source control)
    ```bash
-   flyctl secrets set SUBSTACK_URL="https://yoursubstack.substack.com/feed"
-   flyctl secrets set ANTHROPIC_API_KEY="sk-ant-your-key-here"
+   flyctl secrets set SUBSTACK_URL="https://yourname.substack.com/feed"
+   flyctl secrets set ANTHROPIC_API_KEY="sk-ant-api03-..."
+   flyctl secrets set DASHBOARD_USERNAME="admin"
+   flyctl secrets set DASHBOARD_PASSWORD="choose-a-strong-password"
    ```
 
 7. **Deploy**
@@ -280,244 +247,142 @@ Free tier sleeps after 15 min. Options:
    flyctl deploy
    ```
 
-8. **Access Dashboard**
+8. **Open the dashboard**
    ```bash
    flyctl open
    ```
 
-### Useful Commands:
+9. **Build article inventory** — click **🔨 Build / Refresh Inventory** in the dashboard.
+
+### Useful Fly.io commands
 
 ```bash
-# View logs
-flyctl logs
-
-# SSH into machine
-flyctl ssh console
-
-# Check status
-flyctl status
-
-# Scale (if needed)
-flyctl scale memory 512
+flyctl logs          # View logs
+flyctl status        # Check machine status
+flyctl ssh console   # SSH into the machine
+flyctl scale memory 512  # Increase memory if needed
 ```
 
 ---
 
 ## Google Cloud Run
 
-**Pros:** Only pay for actual usage, scales to zero
-**Cons:** More complex setup, may need VPC for persistence
+**Pros:** Pay-per-use, scales to zero  
+**Cons:** No built-in persistent storage; requires more configuration
 
-### Steps:
+### Steps
 
-1. **Install gcloud CLI**
-   - Follow: https://cloud.google.com/sdk/docs/install
-
-2. **Authenticate**
+1. **Install and authenticate gcloud CLI**
    ```bash
    gcloud auth login
    gcloud config set project YOUR_PROJECT_ID
    ```
 
-3. **Build and Push Image**
+2. **Enable APIs and build image**
    ```bash
-   # Enable APIs
-   gcloud services enable run.googleapis.com
-   gcloud services enable containerregistry.googleapis.com
-
-   # Build
+   gcloud services enable run.googleapis.com containerregistry.googleapis.com
    gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/promotion-agent
-
-   # Or use Docker
-   docker build -t gcr.io/YOUR_PROJECT_ID/promotion-agent .
-   docker push gcr.io/YOUR_PROJECT_ID/promotion-agent
    ```
 
-4. **Deploy to Cloud Run**
+3. **Deploy**
    ```bash
    gcloud run deploy promotion-agent \
      --image gcr.io/YOUR_PROJECT_ID/promotion-agent \
      --platform managed \
      --region us-central1 \
      --allow-unauthenticated \
-     --set-env-vars SUBSTACK_URL="https://yoursubstack.substack.com/feed" \
-     --set-env-vars ANTHROPIC_API_KEY="sk-ant-your-key-here" \
+     --set-env-vars SUBSTACK_URL="https://yourname.substack.com/feed" \
+     --set-env-vars ANTHROPIC_API_KEY="sk-ant-api03-..." \
+     --set-env-vars DASHBOARD_USERNAME="admin" \
+     --set-env-vars DASHBOARD_PASSWORD="choose-a-strong-password" \
      --min-instances 1 \
      --max-instances 1
    ```
 
-5. **Add Persistent Disk** (Complex)
-   - Cloud Run doesn't support volumes directly
-   - Options:
-     - Use Cloud SQL (PostgreSQL)
-     - Use Cloud Firestore
-     - Use mounted Cloud Storage bucket
-     - Or accept ephemeral storage
-
-6. **Access Dashboard**
-   - URL provided after deploy
-   - Format: `https://promotion-agent-xxxxx-uc.a.run.app`
+4. **Add persistent storage** — Cloud Run does not support volumes natively. Options:
+   - Use Cloud SQL (PostgreSQL) and update `agent.py`
+   - Mount a Cloud Storage bucket via Cloud Run's volume mounting (preview feature)
+   - Accept ephemeral storage and rebuild the inventory after each deploy
 
 ---
 
-## AWS (ECS Fargate)
+## AWS ECS Fargate
 
-**Pros:** Enterprise-grade, integrates with other AWS services
-**Cons:** Most complex, more expensive
+**Pros:** Enterprise-grade  
+**Cons:** Most complex, higher cost
 
-### High-Level Steps:
-
-1. **Create ECR Repository**
-   ```bash
-   aws ecr create-repository --repository-name promotion-agent
-   ```
-
-2. **Build and Push Image**
-   ```bash
-   # Login to ECR
-   aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com
-
-   # Build and tag
-   docker build -t promotion-agent .
-   docker tag promotion-agent:latest ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/promotion-agent:latest
-
-   # Push
-   docker push ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/promotion-agent:latest
-   ```
-
-3. **Create ECS Cluster**
-   - Use AWS Console or CLI
-   - Select Fargate launch type
-
-4. **Create Task Definition**
-   - CPU: 256 (.25 vCPU)
-   - Memory: 512 MB
-   - Add environment variables
-   - Add EFS volume for persistence
-
-5. **Create Service**
-   - Desired tasks: 1
-   - Load balancer: Optional (for custom domain)
-
-6. **Access Dashboard**
-   - Through load balancer URL or task public IP
+High-level steps:
+1. Create an ECR repository and push your Docker image
+2. Create an ECS cluster (Fargate launch type)
+3. Define a task with 256 CPU / 512 MB memory, environment variables, and an EFS volume for persistence
+4. Create a service (desired count: 1)
+5. Access via load balancer URL or the task's public IP
 
 ---
 
-## Digital Ocean App Platform
+## DigitalOcean App Platform
 
-**Pros:** Simple, good documentation, affordable
-**Cons:** Less free tier than Railway/Render
+**Pros:** Simple UI, affordable  
+**Cons:** Smaller free tier than Railway/Render
 
-### Steps:
+### Steps
 
-1. **Push to GitHub**
-
-2. **Create App**
-   - Go to Digital Ocean
-   - Apps → Create App
-   - Connect GitHub repo
-
-3. **Configure**
-   - Dockerfile detected automatically
-   - Set environment variables
-   - Choose basic plan ($5/mo)
-
-4. **Add Volume** (for persistence)
-   - Under Resources
-   - Add Volume
-   - Mount path: `/app/data`
-
-5. **Deploy**
-   - Click "Create Resources"
-   - Wait for deployment
-   - Get URL from dashboard
+1. Fork/push to GitHub
+2. **Create App** in the DigitalOcean control panel → connect your repo
+3. DigitalOcean detects the Dockerfile automatically
+4. Add environment variables including `DASHBOARD_USERNAME` and `DASHBOARD_PASSWORD`
+5. Add a volume under Resources → Add Volume → mount path `/app/data`
+6. Deploy (basic plan ~$5/mo)
 
 ---
 
-## Comparison Matrix
+## Platform Comparison
 
-| Platform | Free Tier | Persistent Storage | Ease of Use | Best For |
-|----------|-----------|-------------------|-------------|----------|
-| **Local (Docker)** | ✅ Yes | ✅ Yes (host disk) | ⭐⭐⭐⭐⭐ | Testing, development |
-| Railway | ✅ Yes | ⚠️ Paid only | ⭐⭐⭐⭐⭐ | Beginners (cloud) |
-| Render | ✅ Yes | ✅ Yes (1GB) | ⭐⭐⭐⭐ | Most users |
-| Fly.io | ✅ Yes | ✅ Yes | ⭐⭐⭐ | Technical users |
-| Cloud Run | ✅ Yes | ⚠️ Complex | ⭐⭐ | GCP users |
-| ECS | ❌ No | ✅ Yes | ⭐ | Enterprise |
-| Digital Ocean | ❌ No | ✅ Yes | ⭐⭐⭐⭐ | Simple paid option |
+| Platform | Free Tier | Persistent Storage | Auth Required | Ease of Setup |
+|---|---|---|---|---|
+| **Local (Docker)** | ✅ | ✅ host disk | ❌ (local only) | ⭐⭐⭐⭐⭐ |
+| Railway | ✅ | ⚠️ paid only | ✅ | ⭐⭐⭐⭐⭐ |
+| Render | ✅ | ✅ 1 GB free | ✅ | ⭐⭐⭐⭐ |
+| Fly.io | ✅ | ✅ | ✅ | ⭐⭐⭐ |
+| Cloud Run | ✅ | ⚠️ complex | ✅ | ⭐⭐ |
+| ECS Fargate | ❌ | ✅ | ✅ | ⭐ |
+| DigitalOcean | ❌ | ✅ | ✅ | ⭐⭐⭐⭐ |
 
-## Recommendations
+**Recommendations:**
+- **Testing / personal use:** Local Docker — no cloud account, data stays on your machine
+- **First cloud deployment:** Railway — easiest, auto-deploys from GitHub
+- **Serious / persistent use:** Render — free persistent disk, reliable uptime on paid tier
+- **Technical users who want control:** Fly.io — persistent volumes on free tier, global regions
 
-**For testing first:** Local (Docker)  
-- Run `docker-compose up -d` and open http://localhost:5000  
-- No cloud account required; data stays on your machine  
-- Use this to verify the agent and dashboard before deploying to cloud  
-
-**For beginners (cloud):** Railway
-- Easiest setup
-- Auto-deploys from GitHub
-- Great free tier
-- Just accept ephemeral DB or upgrade for $5/mo
-
-**For serious use:** Render
-- Free persistent disk
-- Won't lose data
-- Sleeps but wakes quickly
-- Upgrade to $7/mo for always-on
-
-**For technical users:** Fly.io
-- Most control
-- Global deployment
-- Great CLI tools
-- Persistent volumes free
-
-**For existing cloud users:**
-- GCP → Cloud Run
-- AWS → ECS or Lambda
-- Azure → Container Apps
+---
 
 ## Post-Deployment Checklist
 
-After deploying anywhere:
+After deploying to any platform:
 
-- [ ] Verify agent is running: Check logs
-- [ ] Test RSS feed detection: Publish a test post
-- [ ] Access dashboard: Visit URL
-- [ ] Test API endpoints: `/api/stats`
-- [ ] Set up monitoring: Health checks
-- [ ] Configure custom domain (optional)
-- [ ] Set up SSL/HTTPS (most platforms auto)
-- [ ] Add to browser bookmarks
-- [ ] Set phone reminder to check dashboard
-
-## Troubleshooting
-
-**Build fails:**
-- Check Dockerfile syntax
-- Verify requirements.txt
-- Check logs for specific error
-
-**Agent not detecting posts:**
-- Verify SUBSTACK_URL is correct
-- Check agent logs
-- Test RSS feed manually: `curl $SUBSTACK_URL`
-
-**Dashboard not loading:**
-- Check if port 5000 is exposed
-- Verify server.py is running
-- Check firewall rules
-
-**Database resets:**
-- Platform doesn't have persistent storage
-- Add volume/disk
-- Or migrate to PostgreSQL
-
-**Out of memory:**
-- Increase memory allocation
-- Default 256MB should be enough
-- Check for memory leaks in logs
+- [ ] Dashboard loads at your URL
+- [ ] `/api/stats` returns JSON (confirms server + database are working)
+- [ ] Login prompt appears if `DASHBOARD_USERNAME`/`DASHBOARD_PASSWORD` are set
+- [ ] Agent logs show "Checking for new posts" (no crash loop)
+- [ ] Build article inventory: click **🔨 Build / Refresh Inventory**
+- [ ] `/api/inventory` returns your articles
+- [ ] Publish a test post and confirm it appears in Pending Promotions within 1 hour
 
 ---
 
-Need help? Check the troubleshooting section in README.md or review the platform-specific documentation.
+## Troubleshooting
+
+| Symptom | Resolution |
+|---|---|
+| Build fails | Check Dockerfile syntax and that `agent.py`, `server.py`, `dashboard.html`, `supervisord.conf`, `.env.example` all exist |
+| Container exits immediately | Run `docker-compose up` (no `-d`) to see the full error; most common cause is a missing or invalid env variable |
+| Port 5000 in use | Change the host port in `docker-compose.yml` to e.g. `"5001:5000"` |
+| Dashboard returns 502 | Wait 15–20 s after start for the server to initialise; check logs |
+| Dashboard asks for credentials I didn't set | `DASHBOARD_USERNAME` or `DASHBOARD_PASSWORD` is set in `.env` — remove or clear both to disable auth |
+| Agent not detecting posts | Confirm `SUBSTACK_URL` ends in `/feed`; test with `curl $SUBSTACK_URL` |
+| Inventory build returns 0 articles | Confirm `SUBSTACK_URL` is your real publication; check Anthropic API key has credits |
+| Database resets on redeploy | Platform has no persistent storage — add a volume or set `PROMOTION_AGENT_DB` to a mounted path |
+
+---
+
+For day-to-day usage see [QUICK_REFERENCE.md](QUICK_REFERENCE.md). For a full step-by-step Docker verification checklist see [DOCKER_DEPLOYMENT_PLAN.md](DOCKER_DEPLOYMENT_PLAN.md).
