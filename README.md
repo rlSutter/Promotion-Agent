@@ -2,6 +2,10 @@
 
 An autonomous agent that implements a "promote sentences, not articles" strategy for every Substack post you publish. It runs in the background, monitors your RSS feed, and drafts platform-specific promotional content for your review — so promotion takes 15 minutes instead of 45.
 
+## Who This Is For
+
+Independent Substack writers running their own promotion workflow. Solo operators, not teams. Writers who publish thoughtfully and hate the 45-minute post-publish ritual of crafting platform-specific copy, figuring out what to comment on in their ecosystem, and trying to remember what they've written before. The intended use is focused: open the dashboard after publishing, make decisions, copy drafts, close it. A 15-minute window, not an always-on tool.
+
 ## Why This Exists
 
 Publishing on Substack is the hard part. Promotion is supposed to be the easy part — but in practice it takes 30 to 45 minutes per post, most of which is mechanical work that produces inconsistent results: picking what to quote, rewriting it for each platform's register, deciding where to comment this week, trying to remember what you wrote six months ago.
@@ -445,9 +449,8 @@ promotion-agent/
 ├── .gitignore
 ├── article_inventory.md  # Auto-generated inventory export
 ├── README.md
-├── DEPLOYMENT.md         # Full cloud deployment guide (Railway, Render, Fly.io, etc.)
-├── QUICK_REFERENCE.md    # Daily workflow cheat sheet
-└── EXAMPLES.md           # Sample generated output
+├── DEPLOYMENT.md         # Cloud deployment guide (Railway, Render, Fly.io, etc.)
+└── QUICK_REFERENCE.md    # Daily workflow cheat sheet
 ```
 
 ---
@@ -458,6 +461,60 @@ promotion-agent/
 - Your Anthropic API key gives billing access to your account; keep it secret
 - **Set `DASHBOARD_USERNAME` and `DASHBOARD_PASSWORD` for any deployment reachable from the internet.** Without them the dashboard and all API endpoints are publicly accessible to anyone with the URL.
 - The dashboard has no rate limiting — use firewall rules or your cloud platform's access controls if you need additional protection
+
+---
+
+## Example Output
+
+When you publish a post, the agent processes it and drafts everything for your review. Here's what that looks like for a post about leadership:
+
+**Post:** "The Likability Tax on Technical Leadership"
+
+**Extracted outward sentence** (the spine of the post, stands alone without context):
+> "The likability tax isn't about interpersonal skills — it's about the cognitive load of managing others' comfort while making hard decisions."
+
+**Platform routing:** LinkedIn (matched keywords: leadership, technical leadership, workplace, bias)
+
+**Generated promotional post:**
+```
+The likability tax isn't about interpersonal skills — it's about
+the cognitive load of managing others' comfort while making hard decisions.
+
+For technical leaders, every "no" requires emotional labor. Every priority
+call gets filtered through "will this make me seem difficult?" This creates
+analysis paralysis and trains leaders to optimize for consensus over outcomes.
+
+If you've felt this, you know how it compounds.
+
+[link]
+```
+
+**Commenting suggestions:**
+- Posts about engineering management transitions — add the nuance that the transition isn't just about new responsibilities; it's about learning to navigate the likability tax that comes with authority.
+- Discussions of psychological safety — distinguish between safety and the expectation that leaders make everyone comfortable.
+
+**Inventory entry** (auto-added, no action needed):
+```
+Topics:          leadership · women in tech · cognitive load · decision-making
+Core mechanism:  Managing others' emotional comfort compounds into a
+                 decision-making tax that slows technical leaders
+```
+
+Everything lands in the dashboard for review. You edit if needed, copy, paste, and mark done.
+
+---
+
+## Philosophy
+
+Five principles that explain why the tool works the way it does:
+
+1. **Content before chrome.** The promotional copy is the product. The interface is infrastructure. If a UI element isn't helping the writer evaluate or publish a draft, it has no reason to exist.
+2. **Workflow, not performance.** Every decision — layout, spacing, interaction — exists to reduce friction in the review-edit-copy-publish loop. Nothing to impress; everything to accelerate.
+3. **Writer voice.** The tool is an extension of the writer's creative process. It should feel like their notebook, not a SaaS dashboard.
+4. **Calm clarity.** One section at a time, unambiguous state (pending, published, skipped), no urgency theater. The writer is already done with the hard work of publishing; this tool should feel like winding down, not ramping up.
+5. **Personal scale.** Built for one person. Not scalable to a team, not designed to impress stakeholders.
+
+The dashboard meets WCAG AA contrast requirements, is keyboard navigable, and respects `prefers-reduced-motion`.
 
 ---
 

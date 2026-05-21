@@ -61,3 +61,9 @@ WORK_NOTES.md
 # Agent and design tool artifacts
 .agents/
 .impeccable/
+
+# Local config with credentials
+defaults.txt
+
+# Claude Code skill lockfile
+skills-lock.json

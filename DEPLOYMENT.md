@@ -13,8 +13,6 @@ Step-by-step instructions for running the Blog Promotion Agent locally and deplo
 **Pros:** No cloud account needed, full control, data stays on your machine, free  
 **Cons:** Your computer must be on for the agent to run; no public URL by default
 
-For a step-by-step verification checklist see [DOCKER_DEPLOYMENT_PLAN.md](DOCKER_DEPLOYMENT_PLAN.md).
-
 ### Prerequisites
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) — includes Docker and Docker Compose
@@ -60,6 +58,25 @@ For a step-by-step verification checklist see [DOCKER_DEPLOYMENT_PLAN.md](DOCKER
    docker-compose up
    ```
    Stop with **Ctrl+C**, then use `docker-compose up -d` for background mode.
+
+### Verification
+
+After starting, confirm everything is working:
+
+| Check | Command / action | Expected |
+|---|---|---|
+| Container up | `docker-compose ps` | `promotion-agent` with state **Up** and port `0.0.0.0:5000->5000/tcp` |
+| Dashboard | Open http://localhost:5000 | Dashboard with six collapsible sections loads |
+| API health | `curl http://localhost:5000/api/stats` | JSON response, HTTP 200 |
+| Inventory API | `curl http://localhost:5000/api/inventory` | JSON with items array |
+| Logs | `docker-compose logs --tail=30 promotion-agent` | No crash loop; "Monitoring" / "Checking for new posts" lines visible |
+
+**Data persistence** — after the first run, your project folder should contain:
+- `promotion_agent.db` — SQLite database
+- `review_dashboard.json` — dashboard state (regenerated hourly)
+- `article_inventory.md` — exported inventory (created after the inventory build)
+
+Restart and reload the dashboard to confirm data survives a container restart.
 
 ### Useful commands
 
@@ -385,4 +402,4 @@ After deploying to any platform:
 
 ---
 
-For day-to-day usage see [QUICK_REFERENCE.md](QUICK_REFERENCE.md). For a full step-by-step Docker verification checklist see [DOCKER_DEPLOYMENT_PLAN.md](DOCKER_DEPLOYMENT_PLAN.md).
+For day-to-day usage see [QUICK_REFERENCE.md](QUICK_REFERENCE.md).
