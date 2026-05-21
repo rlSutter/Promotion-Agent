@@ -23,7 +23,7 @@ The design reflects a specific workflow: open the dashboard after publishing, sp
 Every time you publish a post on Substack, the agent automatically:
 
 1. **Extracts** the best "outward sentence" — the spine of the post that stands alone
-2. **Routes** it to the right platform (LinkedIn, Substack Notes, or Bluesky) based on content type
+2. **Suggests** a platform (LinkedIn, Substack Notes, or Bluesky) based on keyword matching against the post title and content
 3. **Generates** a complete promotional post (not a teaser)
 4. **Creates** commenting suggestions for ecosystem engagement
 5. **Adds** the post to your searchable article inventory
@@ -249,7 +249,7 @@ The agent makes five distinct API calls per new post, plus one on demand for the
 | Article metadata extraction | `extract_article_metadata()` | Extracts subtitle, 3–6 topic tags, and a one-sentence core mechanism summary for the inventory | 300 |
 | Weekly on-ramp post | `generate_weekly_onramp_post()` | Every Monday, selects 3 articles (frame / situational / bridge) and drafts a "start here" post | 600 |
 
-Platform routing is **not** AI-based — it uses keyword matching against `PLATFORM_ROUTING` in `agent.py` (fast, free, predictable).
+Platform selection is **not** AI-based. The agent counts keyword matches between the post title/content and a configurable list per platform, then picks the highest scorer. If nothing matches, it defaults to Substack Notes. You can override the suggestion in the dashboard before copying. Edit `PLATFORM_ROUTING` in `agent.py` to change the keyword lists.
 
 ### Platform tone guidelines
 
@@ -289,9 +289,11 @@ The agent logs an explicit error message with a link to the billing page if your
 
 ## Customization
 
-### Platform routing
+### Platform selection
 
-The agent routes content to platforms based on keywords in the post. Edit `PLATFORM_ROUTING` in `agent.py`:
+The agent scores each platform by counting how many of its configured keywords appear in the post title and content, then picks the highest scorer. If no keywords match, it defaults to Substack Notes. The suggestion is shown in the dashboard and can be overridden before you copy.
+
+Edit `PLATFORM_ROUTING` in `agent.py` to change the keyword lists:
 
 ```python
 PLATFORM_ROUTING = {
@@ -300,6 +302,8 @@ PLATFORM_ROUTING = {
     "bluesky": ["playful", "culture", "gaming", "fun"],
 }
 ```
+
+Keep keyword lists distinct — a word that appears in two lists splits the score and makes routing unpredictable.
 
 ### Check interval
 
