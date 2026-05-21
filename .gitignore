@@ -1,9 +1,6 @@
 # Environment variables
 .env
 
-# Claude Code local settings (machine-specific)
-.claude/settings.local.json
-
 # Database
 *.db
 *.db-journal
