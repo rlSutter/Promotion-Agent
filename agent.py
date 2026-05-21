@@ -71,10 +71,10 @@ PLATFORM_ROUTING = {
     ],
     "substack_notes": [
         "psychological safety", "technical debt", "framework", "mental model",
-        "cognitive", "thinking", "ideas", "concepts", "patterns"
+        "cognitive load", "thinking", "ideas", "concepts", "patterns"
     ],
     "bluesky": [
-        "bike-shedding", "law of triviality", "cognitive bias", "thinking",
+        "bike-shedding", "law of triviality", "cognitive bias",
         "playful", "brain", "psychology", "curiosity"
     ],
 }
