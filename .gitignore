@@ -57,3 +57,7 @@ data/
 
 # Personal work notes
 WORK_NOTES.md
+
+# Agent and design tool artifacts
+.agents/
+.impeccable/
