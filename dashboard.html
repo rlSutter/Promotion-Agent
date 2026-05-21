@@ -5,458 +5,690 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Promotion Review Dashboard</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* ── TOKENS ───────────────────────────────────────────────── */
+        :root {
+            /* Surfaces — warm paper, tinted toward editorial plum (hue 293) */
+            --canvas:           oklch(96.5% 0.008 293);
+            --surface:          oklch(99%   0.003 293);
+            --surface-low:      oklch(96%   0.009 293);
+            --surface-task:     oklch(97.5% 0.014 55);
+            --surface-affirm:   oklch(96.5% 0.022 142);
+            --surface-archived: oklch(95%   0.006 293);
+
+            /* Text */
+            --text-primary:   oklch(22%  0.014 293);
+            --text-secondary: oklch(40%  0.010 293);
+            --text-muted:     oklch(55%  0.008 293);
+            --text-faint:     oklch(68%  0.005 293);
+
+            /* Borders */
+            --border-subtle: oklch(90%  0.010 293);
+            --border-medium: oklch(86%  0.014 293);
+            --border-task:   oklch(84%  0.048 55);
+
+            /* Links */
+            --link:       oklch(50%  0.175 246);
+            --link-hover: oklch(44%  0.185 246);
+
+            /* Editorial Plum — the system's own accent */
+            --plum:      oklch(45%  0.215 293);
+            --plum-deep: oklch(38%  0.21  293);
+            --plum-tint: oklch(93%  0.040 293);
+
+            /* Semantic action palette */
+            --affirm:          oklch(63%  0.175 142);
+            --affirm-deep:     oklch(57%  0.175 142);
+            --edit:            oklch(58%  0.185 246);
+            --edit-deep:       oklch(52%  0.185 246);
+            --stage:           oklch(70%  0.165 55);
+            --stage-deep:      oklch(64%  0.165 55);
+            --dismiss:         oklch(55%  0.21  27);
+            --neutral-btn:     oklch(89%  0.010 293);
+            --neutral-btn-hov: oklch(84%  0.014 293);
+            --teal:            oklch(55%  0.13  179);
+            --teal-deep:       oklch(49%  0.13  179);
+
+            /* Platform identity — borrowed, quarantined to badges */
+            --linkedin:  oklch(47%  0.15  243);
+            --substack:  oklch(67%  0.195 37);
+            --bluesky:   oklch(60%  0.19  249);
+
+            /* Elevation */
+            --shadow-section: 0 1px 4px oklch(22% 0.014 293 / 0.07),
+                              0 0 0 1px oklch(22% 0.014 293 / 0.04);
+            --focus-ring: 0 0 0 3px oklch(45% 0.215 293 / 0.22);
+
+            /* Scale */
+            --sp1:4px; --sp2:8px; --sp3:12px; --sp4:16px; --sp5:20px;
+            --sp6:24px; --sp7:28px; --sp8:32px; --sp10:40px; --sp12:48px;
+
+            /* Radii */
+            --r-sm: 4px; --r-md: 6px; --r-lg: 10px; --r-pill: 100px;
+
+            /* Fonts */
+            --ui: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+            --content: Georgia, "Times New Roman", serif;
+        }
+
+        /* ── RESET ────────────────────────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* ── BASE ─────────────────────────────────────────────────── */
+        html { font-size: 15px; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #f5f5f5;
-            padding: 20px;
-            line-height: 1.6;
+            font-family: var(--ui);
+            background: var(--canvas);
+            color: var(--text-primary);
+            line-height: 1.65;
+            padding: var(--sp5);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            font-optical-sizing: auto;
         }
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-        }
+        .container { max-width: 900px; margin: 0 auto; }
+
+        /* ── HEADER ───────────────────────────────────────────────── */
         header {
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            background: var(--surface);
+            padding: var(--sp8) var(--sp8) var(--sp6);
+            border-radius: var(--r-lg);
+            margin-bottom: var(--sp5);
+            box-shadow: var(--shadow-section);
         }
         h1 {
-            color: #333;
-            margin-bottom: 10px;
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: -0.015em;
+            color: var(--text-primary);
+            margin-bottom: 3px;
+            text-wrap: balance;
+        }
+        .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: var(--sp2);
+            margin-top: 3px;
         }
         .status {
-            color: #666;
-            font-size: 14px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
         }
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--sp3);
+        }
+        .sync-btn {
+            padding: 7px 14px;
+            font-size: 0.82rem;
+            background: var(--plum-tint);
+            color: var(--plum-deep);
+            border: 1px solid oklch(87% 0.055 293);
+        }
+        .sync-btn:hover { background: oklch(88% 0.060 293); border-color: oklch(80% 0.080 293); }
+        .sync-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .sync-status-msg {
+            font-size: 0.77rem;
+            color: var(--text-muted);
+        }
+
+        /* ── SECTIONS ─────────────────────────────────────────────── */
         .section {
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            background: var(--surface);
+            padding: var(--sp7) var(--sp8);
+            border-radius: var(--r-lg);
+            margin-bottom: var(--sp5);
+            box-shadow: var(--shadow-section);
         }
         .section h2 {
-            color: #333;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #e0e0e0;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.10em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding-bottom: var(--sp3);
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: var(--sp6);
             cursor: pointer;
             user-select: none;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            transition: color 0.15s;
         }
-        .section h2:hover { color: #555; }
+        .section h2:hover { color: var(--text-secondary); }
+        .section.collapsed h2 { margin-bottom: 0; padding-bottom: 0; border-bottom-color: transparent; }
+        .section.collapsed .section-content { display: none; }
         .section-chevron {
-            font-size: 18px;
-            color: #bbb;
-            margin-left: 10px;
+            font-size: 13px;
+            color: var(--text-faint);
+            margin-left: var(--sp3);
             flex-shrink: 0;
-            transition: transform 0.2s;
+            transition: transform 0.2s ease-out;
             line-height: 1;
         }
         .section.collapsed .section-chevron { transform: rotate(-90deg); }
-        .section-content { transition: opacity 0.15s; }
-        .section.collapsed .section-content { display: none; }
-        .section.collapsed h2 { margin-bottom: 0; border-bottom-color: transparent; }
+        .section-desc {
+            font-size: 0.87rem;
+            color: var(--text-muted);
+            margin-top: calc(-1 * var(--sp3));
+            margin-bottom: var(--sp5);
+            line-height: 1.55;
+        }
+
+        /* ── PROMO CARDS ──────────────────────────────────────────── */
         .promo-card {
-            background: #fafafa;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            padding: 20px;
-            margin-bottom: 20px;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--r-md);
+            padding: var(--sp6);
+            margin-bottom: var(--sp5);
+            transition: border-color 0.15s;
+            background: var(--surface);
         }
-        .promo-card:hover {
-            border-color: #4CAF50;
-        }
+        .promo-card:hover { border-color: var(--affirm); }
+        .promo-card:last-child { margin-bottom: 0; }
+
         .post-title {
+            font-size: 1.2rem;
             font-weight: 600;
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 18px;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+            line-height: 1.35;
+            margin-bottom: var(--sp3);
+            text-wrap: balance;
+            overflow-wrap: break-word;
         }
+
+        /* ── PLATFORM BADGES ──────────────────────────────────────── */
         .platform-badge {
             display: inline-block;
-            background: #2196F3;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            margin-bottom: 15px;
+            background: var(--neutral-btn);
+            color: var(--text-secondary);
+            padding: 3px 10px;
+            border-radius: var(--r-pill);
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
             text-transform: uppercase;
-            font-weight: 600;
+            margin-bottom: var(--sp4);
         }
-        .platform-badge.linkedin { background: #0077B5; }
-        .platform-badge.substack_notes { background: #FF6719; }
-        .platform-badge.bluesky { background: #1185FE; }
-        
+        .platform-badge.linkedin       { background: var(--linkedin);  color: oklch(99% 0.002 293); }
+        .platform-badge.substack_notes { background: var(--substack);  color: oklch(99% 0.002 293); }
+        .platform-badge.bluesky        { background: var(--bluesky);   color: oklch(99% 0.002 293); }
+
+        /* ── FIELD LABELS ─────────────────────────────────────────── */
         .label {
-            font-weight: 600;
-            color: #555;
-            margin-top: 15px;
-            margin-bottom: 5px;
-            font-size: 13px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.10em;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-top: var(--sp5);
+            margin-bottom: var(--sp2);
         }
+
+        /* ── CONTENT BLOCKS (Georgia register) ───────────────────── */
         .outward-sentence {
-            background: #fff;
-            padding: 15px;
-            border-left: 4px solid #4CAF50;
-            margin-bottom: 15px;
+            font-family: var(--content);
+            font-size: 1rem;
             font-style: italic;
-            color: #333;
+            line-height: 1.75;
+            color: var(--text-secondary);
+            background: var(--surface-affirm);
+            border-radius: var(--r-sm);
+            padding: var(--sp4) var(--sp5);
+            margin-bottom: var(--sp3);
+            overflow-wrap: break-word;
         }
         .promotional-post {
-            background: #fff;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            font-family: var(--content);
+            font-size: 0.97rem;
+            line-height: 1.8;
+            color: var(--text-primary);
+            background: var(--surface);
+            border: 1px solid var(--border-medium);
+            border-radius: var(--r-sm);
+            padding: var(--sp4) var(--sp5);
             white-space: pre-wrap;
-            font-family: 'Georgia', serif;
-            line-height: 1.7;
-            color: #333;
-        }
-        .actions {
-            margin-top: 20px;
-            display: flex;
-            gap: 10px;
-        }
-        button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-        .copy-btn {
-            background: #4CAF50;
-            color: white;
-        }
-        .copy-btn:hover {
-            background: #45a049;
-        }
-        .edit-btn {
-            background: #2196F3;
-            color: white;
-        }
-        .edit-btn:hover {
-            background: #0b7dda;
-        }
-        .approve-btn {
-            background: #FF9800;
-            color: white;
-        }
-        .approve-btn:hover {
-            background: #e68900;
-        }
-        .skip-btn {
-            background: #f44336;
-            color: white;
-        }
-        .skip-btn:hover {
-            background: #da190b;
-        }
-        .copied {
-            background: #666 !important;
-        }
-        .task-item {
-            background: #f9f9f9;
-            padding: 15px;
-            border-left: 3px solid #FF9800;
-            margin-bottom: 15px;
-            border-radius: 4px;
-        }
-        .task-type {
-            font-weight: 600;
-            color: #FF9800;
-            margin-bottom: 5px;
-        }
-        .commenting-suggestions {
-            background: #e8f5e9;
-            padding: 15px;
-            border-radius: 4px;
-            margin-top: 15px;
-            white-space: pre-wrap;
-            line-height: 1.6;
-        }
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: #999;
-        }
-        .timestamp {
-            font-size: 12px;
-            color: #999;
-            margin-top: 10px;
+            overflow-wrap: break-word;
         }
         textarea {
             width: 100%;
-            min-height: 150px;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-family: 'Georgia', serif;
-            font-size: 15px;
-            line-height: 1.7;
+            min-height: 160px;
+            max-height: 420px;
+            padding: var(--sp4) var(--sp5);
+            border: 1px solid var(--border-medium);
+            border-radius: var(--r-sm);
+            font-family: var(--content);
+            font-size: 0.97rem;
+            line-height: 1.8;
+            color: var(--text-primary);
+            background: var(--surface);
             resize: vertical;
+            outline: none;
+            transition: border-color 0.15s;
         }
-        .hidden { display: none; }
-        .promo-card.archived {
-            border-color: #bbb;
-            background: #f0f0f0;
+        textarea:focus { border-color: var(--plum); box-shadow: var(--focus-ring); }
+
+        /* ── ACTIONS ──────────────────────────────────────────────── */
+        .actions {
+            margin-top: var(--sp5);
+            display: flex;
+            align-items: center;
+            gap: var(--sp2);
+            flex-wrap: wrap;
         }
+        button {
+            border: none;
+            border-radius: var(--r-sm);
+            cursor: pointer;
+            font-family: var(--ui);
+            font-weight: 600;
+            line-height: 1;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+            white-space: nowrap;
+        }
+        button:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .copy-btn  { padding: 10px 22px; font-size: 0.93rem; background: var(--affirm);    color: oklch(99% 0.002 293); }
+        .edit-btn  { padding:  9px 18px; font-size: 0.87rem; background: var(--edit);      color: oklch(99% 0.002 293); }
+        .approve-btn { padding: 9px 18px; font-size: 0.87rem; background: var(--stage);    color: oklch(99% 0.002 293); }
+        .recover-btn { padding: 9px 18px; font-size: 0.87rem; background: var(--edit);     color: oklch(99% 0.002 293); }
+
+        .copy-btn:hover    { background: var(--affirm-deep); }
+        .edit-btn:hover    { background: var(--edit-deep); }
+        .approve-btn:hover { background: var(--stage-deep); }
+        .recover-btn:hover { background: var(--edit-deep); }
+
+        .copied { background: var(--text-muted) !important; color: var(--surface) !important; }
+
+        /* Skip is a quiet ghost — pushed right, not a red equal peer */
+        .skip-btn {
+            padding: 9px 16px;
+            font-size: 0.87rem;
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border-medium);
+            margin-left: auto;
+        }
+        .skip-btn:hover {
+            background: oklch(97% 0.018 27);
+            color: var(--dismiss);
+            border-color: oklch(82% 0.055 27);
+        }
+
+        /* System-action buttons (Editorial Plum) */
+        .build-btn { padding: 8px 16px; font-size: 0.87rem; background: var(--plum);    color: oklch(99% 0.002 293); }
+        .export-btn { padding: 8px 16px; font-size: 0.87rem; background: var(--teal);   color: oklch(99% 0.002 293); }
+        .build-btn:hover  { background: var(--plum-deep); }
+        .export-btn:hover { background: var(--teal-deep); }
+
+        .clear-search-btn {
+            padding: 7px 14px;
+            font-size: 0.87rem;
+            background: var(--neutral-btn);
+            color: var(--text-secondary);
+            align-self: flex-end;
+        }
+        .clear-search-btn:hover { background: var(--neutral-btn-hov); }
+
+        /* ── TIMESTAMPS & LINKS ───────────────────────────────────── */
+        .timestamp {
+            font-size: 0.77rem;
+            color: var(--text-faint);
+            margin-top: var(--sp4);
+        }
+        .view-post-link {
+            font-size: 0.8rem;
+            color: var(--link);
+            text-decoration: none;
+            text-underline-offset: 2px;
+            margin-left: var(--sp2);
+        }
+        .view-post-link:hover { color: var(--link-hover); text-decoration: underline; }
+
+        /* ── TASK ITEMS ───────────────────────────────────────────── */
+        .task-item {
+            background: var(--surface-task);
+            border: 1px solid var(--border-task);
+            border-radius: var(--r-md);
+            padding: var(--sp5);
+            margin-bottom: var(--sp4);
+        }
+        .task-item:last-child { margin-bottom: 0; }
+        .task-type {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--stage);
+            margin-bottom: var(--sp3);
+        }
+        .commenting-suggestions {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            white-space: pre-wrap;
+            margin-top: var(--sp3);
+        }
+
+        /* ── EMPTY STATES ─────────────────────────────────────────── */
+        .empty-state {
+            text-align: center;
+            padding: var(--sp12) var(--sp8);
+            color: var(--text-muted);
+            font-size: 0.87rem;
+            line-height: 1.6;
+        }
+        .empty-state a { color: var(--link); text-decoration: underline; text-underline-offset: 2px; }
+
+        /* ── ANALYTICS ────────────────────────────────────────────── */
+        .analytics-grid { display: flex; flex-direction: column; }
+        .analytics-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--sp2) 0;
+            border-bottom: 1px solid var(--border-subtle);
+            gap: var(--sp4);
+        }
+        .analytics-item:last-child { border-bottom: none; }
+        .analytics-item .event-type {
+            color: var(--text-secondary);
+            font-size: 0.87rem;
+            text-transform: capitalize;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .analytics-counts { display: flex; gap: var(--sp6); flex-shrink: 0; }
+        .analytics-count  { display: flex; flex-direction: column; align-items: flex-end; min-width: 28px; }
+        .count-val {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-variant-numeric: tabular-nums;
+            line-height: 1.2;
+        }
+        .count-period {
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-faint);
+            line-height: 1;
+        }
+
+        /* ── SUBSTACK PROFILE ─────────────────────────────────────── */
+        .substack-profile {
+            background: var(--surface-low);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--r-md);
+            padding: var(--sp4) var(--sp5);
+            margin-bottom: var(--sp5);
+            font-size: 0.87rem;
+            color: var(--text-secondary);
+            line-height: 1.65;
+        }
+        .substack-profile a { color: var(--link); font-weight: 600; text-decoration: none; }
+        .substack-profile a:hover { text-decoration: underline; }
+        .substack-profile .fetched { color: var(--text-faint); font-size: 0.77rem; margin-top: var(--sp2); }
+
+        /* ── ARCHIVE ──────────────────────────────────────────────── */
+        .promo-card.archived,
+        .archive-card {
+            background: var(--surface-archived);
+            border-color: var(--border-medium);
+        }
+        .promo-card.archived:hover,
+        .archive-card:hover { border-color: var(--border-medium); }
+
         .archived-badge {
             display: inline-block;
-            padding: 6px 14px;
-            border-radius: 4px;
-            font-weight: 600;
-            font-size: 13px;
+            padding: 3px 10px;
+            border-radius: var(--r-pill);
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
         }
-        .archived-badge.published { background: #4CAF50; color: white; }
-        .archived-badge.skipped { background: #9e9e9e; color: white; }
-        .section-desc {
-            color: #666;
-            font-size: 14px;
-            margin: -10px 0 15px 0;
-        }
-        .archive-section .promo-card {
-            background: #f5f5f5;
-            border-color: #ddd;
-        }
-        .archive-section .promo-card .status-badge {
-            margin-left: 8px;
-        }
-        .recover-btn {
-            background: #2196F3;
-            color: white;
-        }
-        .recover-btn:hover { background: #0b7dda; }
+        .archived-badge.published { background: var(--affirm);     color: oklch(99% 0.002 293); }
+        .archived-badge.skipped   { background: var(--neutral-btn); color: var(--text-secondary); }
+
         .archive-card-header {
             display: flex;
             align-items: center;
             flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 10px;
+            gap: var(--sp2);
+            margin-bottom: var(--sp4);
         }
-        .collapsible-content {
-            margin-top: 10px;
-        }
+        .archive-card-header .post-title { font-size: 1rem; margin-bottom: 0; }
+
+        .collapsible-content { margin-top: var(--sp3); }
         .collapsible-content summary {
             cursor: pointer;
-            color: #666;
-            font-size: 13px;
+            color: var(--text-muted);
+            font-size: 0.8rem;
             user-select: none;
         }
-        .view-post-link {
-            font-size: 13px;
-            color: #2196F3;
-            text-decoration: none;
-            margin-left: 8px;
+        .collapsible-content summary:hover { color: var(--text-secondary); }
+        .collapsible-content summary:focus-visible {
+            outline: none;
+            box-shadow: var(--focus-ring);
+            border-radius: var(--r-sm);
         }
-        .view-post-link:hover { text-decoration: underline; }
-        .analytics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            gap: 10px;
-            margin-top: 10px;
-        }
-        .analytics-item {
-            background: #f5f5f5;
-            padding: 10px 14px;
-            border-radius: 6px;
-            font-size: 13px;
-        }
-        .analytics-item .event-type { color: #555; text-transform: capitalize; }
-        .analytics-item .count { font-weight: 700; color: #333; }
-        .substack-profile {
-            background: #e3f2fd;
-            padding: 16px 20px;
-            border-radius: 8px;
-            margin-bottom: 16px;
-            font-size: 14px;
-        }
-        .substack-profile a { color: #1976d2; font-weight: 600; }
-        .substack-profile .fetched { color: #666; font-size: 12px; margin-top: 8px; }
+        .archive-card .actions { margin-top: var(--sp4); }
+        .archived-post-text { margin-top: var(--sp2); }
+
+        /* ── INVENTORY ────────────────────────────────────────────── */
         .inventory-toolbar {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 14px;
+            gap: var(--sp3);
+            margin-bottom: var(--sp4);
             flex-wrap: wrap;
         }
-        .build-btn {
-            background: #673AB7;
-            color: white;
-            padding: 8px 16px;
-            font-size: 13px;
-        }
-        .build-btn:hover { background: #512DA8; }
-        .build-btn:disabled { background: #9E9E9E; cursor: not-allowed; }
-        .export-btn {
-            background: #009688;
-            color: white;
-            padding: 8px 16px;
-            font-size: 13px;
-        }
-        .export-btn:hover { background: #00796B; }
-        .inventory-status-msg {
-            font-size: 13px;
-            color: #555;
-        }
-        .inventory-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-            margin-top: 6px;
-        }
-        .inventory-table th {
-            text-align: left;
-            padding: 8px 10px;
-            background: #f0f0f0;
-            font-weight: 600;
-            color: #444;
-            border-bottom: 2px solid #ddd;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-        }
-        .inventory-table td {
-            padding: 10px 10px;
-            border-bottom: 1px solid #eee;
-            vertical-align: top;
-        }
-        .inventory-table tr:last-child td { border-bottom: none; }
-        .inventory-table tr:hover td { background: #fafafa; }
+        .inventory-status-msg { font-size: 0.8rem; color: var(--text-muted); }
+
         .inventory-search-bar {
-            background: #f8f8f8;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            padding: 14px 16px;
-            margin-bottom: 16px;
+            background: var(--surface-low);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--r-md);
+            padding: var(--sp4) var(--sp5);
+            margin-bottom: var(--sp5);
         }
-        .search-row {
-            display: flex;
-            gap: 10px;
-            align-items: flex-end;
-            flex-wrap: wrap;
-        }
-        .search-field {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            flex: 1;
-            min-width: 150px;
-        }
-        .search-field-narrow { flex: 0 0 110px; min-width: 90px; }
+        .search-row { display: flex; gap: var(--sp3); align-items: flex-end; flex-wrap: wrap; }
+        .search-field { display: flex; flex-direction: column; gap: var(--sp1); flex: 1; min-width: 140px; }
+        .search-field-narrow { flex: 0 0 100px; min-width: 80px; }
         .search-field label {
-            font-size: 11px;
-            font-weight: 600;
-            color: #666;
+            font-size: 0.67rem;
+            font-weight: 700;
+            color: var(--text-muted);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.09em;
         }
         .search-input, .search-select {
             padding: 7px 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-            background: white;
+            border: 1px solid var(--border-medium);
+            border-radius: var(--r-sm);
+            font-size: 0.87rem;
+            font-family: var(--ui);
+            background: var(--surface);
+            color: var(--text-primary);
             outline: none;
             transition: border-color 0.15s;
         }
-        .search-input:focus, .search-select:focus { border-color: #673AB7; box-shadow: 0 0 0 2px rgba(103,58,183,0.12); }
-        .clear-search-btn {
-            background: #e0e0e0;
-            color: #555;
-            padding: 7px 14px;
-            font-size: 13px;
-            align-self: flex-end;
+        .search-input:focus, .search-select:focus { border-color: var(--plum); box-shadow: var(--focus-ring); }
+        .search-count { margin-top: var(--sp2); font-size: 0.77rem; color: var(--text-faint); }
+
+        mark.search-hl { background: oklch(92% 0.14 97); color: inherit; border-radius: 2px; padding: 0 2px; }
+
+        .inventory-table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+        .inventory-table th {
+            text-align: left;
+            padding: var(--sp2) var(--sp3);
+            color: var(--text-muted);
+            font-size: 0.67rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.09em;
+            border-bottom: 1px solid var(--border-subtle);
+            white-space: nowrap;
         }
-        .clear-search-btn:hover { background: #ccc; }
-        .search-count { margin-top: 8px; font-size: 12px; color: #888; }
-        mark.search-hl { background: #FFF176; color: inherit; border-radius: 2px; padding: 0 1px; }
+        .inventory-table td {
+            padding: var(--sp3);
+            border-bottom: 1px solid var(--border-subtle);
+            vertical-align: top;
+            color: var(--text-secondary);
+            line-height: 1.55;
+        }
+        .inventory-table tr:last-child td { border-bottom: none; }
+        .inventory-table tr:hover td { background: var(--surface-low); }
+
         .inventory-title-link {
-            color: #1976d2;
+            color: var(--link);
             text-decoration: none;
             font-weight: 600;
             line-height: 1.4;
+            text-underline-offset: 2px;
         }
         .inventory-title-link:hover { text-decoration: underline; }
-        .inventory-subtitle {
-            color: #666;
-            font-size: 12px;
-            margin-top: 2px;
-        }
-        .inventory-topics {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-        }
+        .inventory-subtitle { color: var(--text-muted); font-size: 0.8rem; margin-top: 3px; }
+        .inventory-topics { display: flex; flex-wrap: wrap; gap: var(--sp1); }
         .topic-chip {
-            background: #EDE7F6;
-            color: #512DA8;
+            background: var(--plum-tint);
+            color: var(--plum-deep);
             padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 11px;
-            font-weight: 500;
+            border-radius: var(--r-pill);
+            font-size: 0.72rem;
+            font-weight: 600;
         }
-        .inventory-summary {
-            color: #444;
-            font-style: italic;
-            line-height: 1.5;
+        .inventory-summary { color: var(--text-muted); font-style: italic; font-size: 0.87rem; line-height: 1.55; }
+        .inventory-date { color: var(--text-faint); font-size: 0.77rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+        /* ── KEYBOARD FOCUS & INLINE CONFIRMATION ────────────────── */
+        .promo-card.keyboard-focused {
+            outline: 2px solid var(--plum);
+            outline-offset: 3px;
         }
-        .inventory-date {
-            color: #888;
-            font-size: 12px;
-            white-space: nowrap;
+        .skip-btn.confirming {
+            background: oklch(97% 0.018 27);
+            color: var(--dismiss);
+            border-color: oklch(82% 0.055 27);
+        }
+        .approve-btn.confirming {
+            background: var(--stage-deep);
+        }
+        .recover-btn.confirming {
+            background: var(--edit-deep);
+        }
+        .card-error {
+            margin-top: var(--sp3);
+            font-size: 0.82rem;
+            color: var(--dismiss);
+            padding: var(--sp2) var(--sp3);
+            background: oklch(97% 0.018 27);
+            border-radius: var(--r-sm);
+            border: 1px solid oklch(88% 0.040 27);
+        }
+        .save-indicator {
+            font-size: 0.77rem;
+            color: var(--affirm);
+            opacity: 0;
+            transition: opacity 0.25s;
+            margin-left: var(--sp3);
+            align-self: center;
+            pointer-events: none;
+        }
+        .save-indicator.visible { opacity: 1; }
+
+        .kbd-hint {
+            display: none;
+            font-size: 0.67rem;
+            color: var(--text-faint);
+            letter-spacing: 0.04em;
+            margin-top: var(--sp4);
+        }
+        .promo-card.keyboard-focused .kbd-hint { display: block; }
+        .kbd-hint kbd {
+            font-family: var(--ui);
+            font-size: 0.67rem;
+            background: var(--surface-low);
+            border: 1px solid var(--border-medium);
+            border-radius: 3px;
+            padding: 1px 5px;
+            color: var(--text-secondary);
+        }
+
+        /* ── UTILITIES ────────────────────────────────────────────── */
+        .hidden { display: none; }
+        .sr-only {
+            position: absolute; width: 1px; height: 1px;
+            padding: 0; margin: -1px; overflow: hidden;
+            clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+        }
+
+        /* ── REDUCED MOTION ───────────────────────────────────────── */
+        @media (prefers-reduced-motion: reduce) {
+            button, .section-chevron, .section-content,
+            .search-input, .search-select, .promo-card,
+            textarea, .save-indicator { transition: none !important; }
+        }
+
+        /* ── RESPONSIVE ───────────────────────────────────────────── */
+        @media (max-width: 640px) {
+            body { padding: var(--sp3); }
+            header, .section { padding: var(--sp5); }
+            .skip-btn { margin-left: 0; }
+            .inventory-table { font-size: 0.77rem; }
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <div id="sr-announce" aria-live="assertive" aria-atomic="true" class="sr-only"></div>
         <header>
-            <h1>🚀 Promotion Review Dashboard</h1>
-            <div class="status" id="status">Loading...</div>
+            <h1>Promotion Review Dashboard</h1>
+            <div class="header-row">
+                <div class="status" id="status" aria-live="polite">Loading...</div>
+                <div class="header-actions">
+                    <button class="sync-btn" id="sync-btn" onclick="triggerSubstackSync()">Sync Substack</button>
+                    <span class="sync-status-msg" id="sync-status-msg" aria-live="polite"></span>
+                </div>
+            </div>
         </header>
 
-        <div class="section" id="analytics-section">
-            <h2>📊 Analytics (clicks & engagement)</h2>
-            <p class="section-desc">Event counts from dashboard usage (last 7 and 30 days).</p>
-            <div id="analytics-list"></div>
-        </div>
-
         <div class="section">
-            <h2>📝 Pending Promotions</h2>
+            <h2>Pending Promotions</h2>
             <div id="promotions-list"></div>
         </div>
 
-        <div class="section">
-            <h2>💬 Commenting Tasks (10 min/day)</h2>
+        <div class="section" id="commenting-section">
+            <h2>Commenting Suggestions</h2>
             <div id="commenting-tasks"></div>
         </div>
 
-        <div class="section">
-            <h2>📅 Weekly Tasks</h2>
+        <div class="section" id="weekly-section">
+            <h2>Weekly Tasks</h2>
             <div id="weekly-tasks"></div>
         </div>
 
         <div class="section" id="inventory-section">
-            <h2>📚 Article Inventory</h2>
+            <h2>Article Inventory</h2>
             <p class="section-desc">All published articles with topics and core mechanisms. Run the build pass once to populate historical articles; new articles are added automatically.</p>
             <div class="inventory-search-bar">
                 <div class="search-row">
                     <div class="search-field">
                         <label for="inv-search">Search</label>
-                        <input type="text" id="inv-search" class="search-input" placeholder="title, subtitle, or summary…" oninput="applyInventoryFilters()">
+                        <input type="text" id="inv-search" class="search-input" placeholder="title, subtitle, or summary…" oninput="applyInventoryFiltersDebounced()">
                     </div>
                     <div class="search-field">
                         <label for="inv-topic">Topic</label>
-                        <input type="text" id="inv-topic" class="search-input" placeholder="e.g. leadership…" oninput="applyInventoryFilters()">
+                        <input type="text" id="inv-topic" class="search-input" placeholder="e.g. leadership…" oninput="applyInventoryFiltersDebounced()">
                     </div>
                     <div class="search-field search-field-narrow">
                         <label for="inv-year">Year</label>
@@ -464,20 +696,26 @@
                             <option value="">All years</option>
                         </select>
                     </div>
-                    <button class="clear-search-btn" onclick="clearInventoryFilters()">✕ Clear</button>
+                    <button class="clear-search-btn" onclick="clearInventoryFilters()">Clear</button>
                 </div>
                 <div class="search-count" id="inventory-count"></div>
             </div>
             <div class="inventory-toolbar">
-                <button class="build-btn" id="build-btn" onclick="triggerInventoryBuild()">🔨 Build / Refresh Inventory</button>
-                <button class="export-btn" onclick="exportInventoryMarkdown()">⬇ Re-export Markdown</button>
+                <button class="build-btn" id="build-btn" onclick="triggerInventoryBuild()">Build / Refresh Inventory</button>
+                <button class="export-btn" onclick="exportInventoryMarkdown()">Re-export Markdown</button>
                 <span class="inventory-status-msg" id="inventory-status-msg"></span>
             </div>
             <div id="inventory-list"></div>
         </div>
 
+        <div class="section" id="analytics-section">
+            <h2>Analytics</h2>
+            <p class="section-desc">Event counts from dashboard usage (last 7 and 30 days).</p>
+            <div id="analytics-list"></div>
+        </div>
+
         <div class="section archive-section">
-            <h2>📦 Archive</h2>
+            <h2>Archive</h2>
             <p class="section-desc">Items you skipped or marked published. Recover any to return it to the working list.</p>
             <div id="archive-list"></div>
         </div>
@@ -521,8 +759,15 @@
             const generated = new Date(dashboardData.generated_at);
             const pending = dashboardData.pending_promotions.length;
             const archived = (dashboardData.archived_promotions || []).length;
-            document.getElementById('status').textContent = 
+            document.getElementById('status').textContent =
                 `Last updated: ${generated.toLocaleString()} • ${pending} pending • ${archived} archived`;
+            const lastSync = localStorage.getItem('sync-last-run');
+            const syncMsg = document.getElementById('sync-status-msg');
+            if (lastSync && syncMsg && !syncMsg.textContent) {
+                const ts = new Date(lastSync).toLocaleTimeString();
+                const posts = parseInt(localStorage.getItem('sync-new-posts') || '0', 10);
+                syncMsg.textContent = `Last synced ${ts}${posts > 0 ? ` (${posts} new)` : ''}`;
+            }
         }
 
         function renderDashboard() {
@@ -574,7 +819,7 @@
                             const label = eventLabels[et] || et.replace(/_/g, ' ');
                             const c7 = a7[et] || 0;
                             const c30 = a30[et] || 0;
-                            return `<div class="analytics-item"><span class="event-type">${escapeHtml(label)}</span><br><span class="count">7d: ${c7}</span> · <span class="count">30d: ${c30}</span></div>`;
+                            return `<div class="analytics-item"><span class="event-type">${escapeHtml(label)}</span><span class="analytics-counts"><span class="analytics-count"><span class="count-val">${c7}</span><span class="count-period">7d</span></span><span class="analytics-count"><span class="count-val">${c30}</span><span class="count-period">30d</span></span></span></div>`;
                         }).join('') + '</div>';
                     }
                     if (!html) html = '<div class="empty-state">No events yet. Set SUBSTACK_LINKEDIN_HANDLE in .env for Substack profile stats.</div>';
@@ -598,32 +843,26 @@
             container.innerHTML = promotions.map(promo => `
                 <div class="promo-card" data-id="${promo.promotion_id}" data-post-id="${escapeHtml(promo.post_id || '')}" data-platform="${escapeHtml(promo.platform || '')}">
                     <div class="post-title">${escapeHtml(promo.post_title)}</div>
-                    <span class="platform-badge ${promo.platform}">${promo.platform.replace('_', ' ')}</span>
+                    <span class="platform-badge ${promo.platform}">${promo.platform.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
                     ${promo.post_url ? `<a href="${escapeHtml(promo.post_url)}" target="_blank" rel="noopener" class="view-post-link" data-promotion-id="${promo.promotion_id}" data-post-id="${escapeHtml(promo.post_id || '')}" data-platform="${escapeHtml(promo.platform || '')}" data-url="${escapeHtml((promo.post_url || '').substring(0, 200))}" onclick="trackLinkClick(this)">View post ↗</a>` : ''}
 
                     <div class="label">Outward Sentence:</div>
                     <div class="outward-sentence">${escapeHtml(promo.outward_sentence)}</div>
 
                     <div class="label">Promotional Post:</div>
-                    <div class="promotional-post hidden" id="view-${promo.promotion_id}">${escapeHtml(promo.promotional_post)}</div>
-                    <textarea class="promotional-post" id="edit-${promo.promotion_id}">${escapeHtml(promo.promotional_post)}</textarea>
+                    <div class="promotional-post" id="view-${promo.promotion_id}">${escapeHtml(promo.promotional_post)}</div>
+                    <textarea class="promotional-post hidden" id="edit-${promo.promotion_id}" aria-label="Promotional post text">${escapeHtml(promo.promotional_post)}</textarea>
                     
                     <div class="actions">
-                        <button class="copy-btn" onclick="copyToClipboard('${promo.promotion_id}')">
-                            📋 Copy Post
-                        </button>
-                        <button class="edit-btn" onclick="toggleEdit('${promo.promotion_id}')">
-                            ✏️ Toggle Edit
-                        </button>
-                        <button class="approve-btn" onclick="markAsPublished('${promo.promotion_id}')">
-                            ✓ Mark Published
-                        </button>
-                        <button class="skip-btn" onclick="skipPromotion('${promo.promotion_id}')">
-                            ✕ Skip
-                        </button>
+                        <button class="copy-btn" onclick="copyToClipboard('${promo.promotion_id}', this)">Copy</button>
+                        <button class="edit-btn" onclick="toggleEdit('${promo.promotion_id}')">Edit</button>
+                        <span class="save-indicator" id="save-${promo.promotion_id}" aria-live="polite"></span>
+                        <button class="approve-btn" onclick="markAsPublished('${promo.promotion_id}')">Mark Published</button>
+                        <button class="skip-btn" onclick="skipPromotion('${promo.promotion_id}')">Skip</button>
                     </div>
                     
                     <div class="timestamp">Created: ${new Date(promo.created_date).toLocaleString()}</div>
+                    <div class="kbd-hint">Click card to focus, then: <kbd>C</kbd> copy &nbsp;<kbd>E</kbd> edit &nbsp;<kbd>P</kbd> publish &nbsp;<kbd>S</kbd> skip &nbsp;<kbd>↑↓</kbd> navigate</div>
                 </div>
             `).join('');
         }
@@ -633,7 +872,7 @@
             const suggestions = dashboardData.commenting_suggestions;
 
             if (Object.keys(suggestions).length === 0) {
-                container.innerHTML = '<div class="empty-state">Commenting suggestions will appear when you have pending promotions.</div>';
+                container.innerHTML = '<div class="empty-state">No commenting suggestions generated yet.</div>';
                 return;
             }
 
@@ -662,20 +901,18 @@
                     <div class="promo-card archive-card" data-id="${promo.promotion_id}">
                         <div class="archive-card-header">
                             <div class="post-title">${escapeHtml(promo.post_title)}</div>
-                            <span class="platform-badge ${promo.platform}">${promo.platform.replace('_', ' ')}</span>
+                            <span class="platform-badge ${promo.platform}">${promo.platform.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
                             <span class="archived-badge ${statusClass}">${statusLabel}</span>
                         </div>
                         <div class="label">Outward Sentence:</div>
                         <div class="outward-sentence">${escapeHtml(promo.outward_sentence || '')}</div>
                         <details class="collapsible-content">
                             <summary>Show promotional post</summary>
-                            <div class="promotional-post archived-post-text" style="margin-top:8px;white-space:pre-wrap;">${escapeHtml(promo.promotional_post || '')}</div>
+                            <div class="promotional-post archived-post-text">${escapeHtml(promo.promotional_post || '')}</div>
                         </details>
-                        <div class="actions" style="margin-top:15px">
-                            <button class="recover-btn" onclick="recoverPromotion('${promo.promotion_id}')">
-                                ↩ Recover to working list
-                            </button>
-                            <button class="copy-btn" onclick="copyArchivedPost('${promo.promotion_id}')">📋 Copy</button>
+                        <div class="actions">
+                            <button class="recover-btn" onclick="recoverPromotion('${promo.promotion_id}')">Recover to working list</button>
+                            <button class="copy-btn" onclick="copyArchivedPost('${promo.promotion_id}')">Copy</button>
                         </div>
                         <div class="timestamp">${promo.published_date ? 'Archived: ' + new Date(promo.published_date).toLocaleString() : 'Created: ' + new Date(promo.created_date).toLocaleString()}</div>
                     </div>
@@ -698,29 +935,38 @@
             const content = textEl ? textEl.textContent : '';
             navigator.clipboard.writeText(content).then(() => {
                 const btn = card && card.querySelector('.copy-btn');
-                if (btn) { btn.textContent = '✓ Copied!'; setTimeout(() => { btn.textContent = '📋 Copy'; }, 2000); }
+                if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy'; }, 2000); }
             });
         }
 
         function recoverPromotion(promoId) {
-            if (!confirm('Recover this promotion to the working list?')) return;
+            const card = document.querySelector(`.archive-card[data-id="${promoId}"]`);
+            const btn = card && card.querySelector('.recover-btn');
+            if (!btn) return;
+            if (btn.dataset.confirming !== 'true') {
+                btn.dataset.confirming = 'true';
+                btn.textContent = 'Confirm recover';
+                btn.classList.add('confirming');
+                btn._confirmTimer = setTimeout(() => {
+                    btn.dataset.confirming = '';
+                    btn.textContent = 'Recover to working list';
+                    btn.classList.remove('confirming');
+                }, 3000);
+                return;
+            }
+            clearTimeout(btn._confirmTimer);
+            btn.dataset.confirming = '';
+            btn.classList.remove('confirming');
             const archived = (dashboardData && dashboardData.archived_promotions) || [];
             const promo = archived.find(p => p.promotion_id == promoId);
             trackEvent('recover', { promotion_id: parseInt(promoId, 10), post_id: promo?.post_id, platform: promo?.platform });
-            const card = document.querySelector(`.archive-card[data-id="${promoId}"]`);
-            if (card) {
-                const btn = card.querySelector('.recover-btn');
-                if (btn) { btn.disabled = true; btn.textContent = '… Recovering'; }
-            }
+            btn.disabled = true; btn.textContent = 'Recovering…';
             fetch(`/api/recover-promotion/${promoId}`, { method: 'POST' })
                 .then(res => res.ok ? res.json() : Promise.reject(res))
                 .then(() => loadDashboard())
                 .catch(err => {
-                    if (card) {
-                        const btn = card.querySelector('.recover-btn');
-                        if (btn) { btn.disabled = false; btn.textContent = '↩ Recover to working list'; }
-                    }
-                    alert(err.status ? `Server error ${err.status}. Check console.` : 'Could not reach server.');
+                    btn.disabled = false; btn.textContent = 'Recover to working list';
+                    showCardError(card, err.status ? `Server error ${err.status}.` : 'Could not reach server.');
                 });
         }
 
@@ -738,12 +984,8 @@
                     <div class="task-type">${escapeHtml(task.task_type.replace('_', ' ').toUpperCase())}</div>
                     <div class="commenting-suggestions">${escapeHtml(task.content)}</div>
                     <div class="actions">
-                        <button class="copy-btn" data-task-id="${task.task_id}" data-content="${escapeHtml(task.content)}" onclick="copyTaskContent(this)">
-                            📋 Copy
-                        </button>
-                        <button class="approve-btn" onclick="markTaskComplete('${task.task_id}')">
-                            ✓ Mark Complete
-                        </button>
+                        <button class="copy-btn" data-task-id="${task.task_id}" data-content="${escapeHtml(task.content)}" onclick="copyTaskContent(this)">Copy</button>
+                        <button class="approve-btn" onclick="markTaskComplete('${task.task_id}')">Mark Complete</button>
                     </div>
                     <div class="timestamp">Due: ${new Date(task.due_date).toLocaleDateString()}</div>
                 </div>
@@ -753,11 +995,72 @@
         function toggleEdit(promoId) {
             const viewElem = document.getElementById(`view-${promoId}`);
             const editElem = document.getElementById(`edit-${promoId}`);
+            const card = document.querySelector(`.promo-card[data-id="${promoId}"]`);
+            const editBtn = card && card.querySelector('.edit-btn');
+            const isEnteringEdit = viewElem && !viewElem.classList.contains('hidden');
             viewElem.classList.toggle('hidden');
             editElem.classList.toggle('hidden');
+            if (editBtn) editBtn.textContent = isEnteringEdit ? 'Done' : 'Edit';
+            if (isEnteringEdit && editElem) {
+                editElem.focus();
+                // Sync textarea from view in case it was updated server-side
+                if (viewElem.textContent !== editElem.value) {
+                    editElem.value = viewElem.textContent;
+                }
+            }
         }
 
-        function copyToClipboard(promoId) {
+        function savePromoEdit(promoId, textarea) {
+            const indicator = document.getElementById(`save-${promoId}`);
+            fetch(`/api/update-promotion/${promoId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ promotional_post: textarea.value }),
+            })
+            .then(res => res.ok ? res.json() : Promise.reject(res))
+            .then(() => {
+                // Keep view div in sync
+                const viewElem = document.getElementById(`view-${promoId}`);
+                if (viewElem) viewElem.textContent = textarea.value;
+                if (indicator) {
+                    indicator.textContent = 'Saved';
+                    indicator.classList.add('visible');
+                    setTimeout(() => indicator.classList.remove('visible'), 2000);
+                }
+                srAnnounce('Edit saved.');
+            })
+            .catch(() => {
+                if (indicator) {
+                    indicator.textContent = 'Save failed';
+                    indicator.style.color = 'var(--dismiss)';
+                    indicator.classList.add('visible');
+                    setTimeout(() => {
+                        indicator.classList.remove('visible');
+                        indicator.style.color = '';
+                    }, 3000);
+                }
+            });
+        }
+
+        function srAnnounce(msg) {
+            const el = document.getElementById('sr-announce');
+            if (!el) return;
+            el.textContent = '';
+            requestAnimationFrame(() => { el.textContent = msg; });
+        }
+
+        // Wire auto-save on textarea blur — delegated so it survives re-renders
+        document.addEventListener('blur', e => {
+            const ta = e.target;
+            if (!ta.matches('textarea.promotional-post')) return;
+            const card = ta.closest('.promo-card');
+            if (!card) return;
+            const promoId = card.dataset.id;
+            if (!promoId) return;
+            savePromoEdit(promoId, ta);
+        }, true);
+
+        function copyToClipboard(promoId, btn) {
             const editElem = document.getElementById(`edit-${promoId}`);
             const text = editElem.value;
             const card = document.querySelector(`.promo-card[data-id="${promoId}"]`);
@@ -765,10 +1068,10 @@
             const platform = card ? card.dataset.platform : '';
             trackEvent('copy_post', { promotion_id: parseInt(promoId, 10), post_id: postId || undefined, platform: platform || undefined });
             navigator.clipboard.writeText(text).then(() => {
-                const btn = event.target;
                 const originalText = btn.textContent;
-                btn.textContent = '✓ Copied!';
+                btn.textContent = 'Copied!';
                 btn.classList.add('copied');
+                srAnnounce('Copied to clipboard.');
                 setTimeout(() => {
                     btn.textContent = originalText;
                     btn.classList.remove('copied');
@@ -782,7 +1085,7 @@
             trackEvent('copy_task', { task_id: parseInt(taskId, 10) });
             navigator.clipboard.writeText(content).then(() => {
                 const originalText = btn.textContent;
-                btn.textContent = '✓ Copied!';
+                btn.textContent = 'Copied!';
                 btn.classList.add('copied');
                 setTimeout(() => {
                     btn.textContent = originalText;
@@ -791,54 +1094,72 @@
             });
         }
 
+        function _requireConfirm(btn, label, resetLabel, action) {
+            if (btn.dataset.confirming !== 'true') {
+                btn.dataset.confirming = 'true';
+                btn.textContent = label;
+                btn.classList.add('confirming');
+                btn._confirmTimer = setTimeout(() => {
+                    btn.dataset.confirming = '';
+                    btn.textContent = resetLabel;
+                    btn.classList.remove('confirming');
+                }, 3000);
+                return false;
+            }
+            clearTimeout(btn._confirmTimer);
+            btn.dataset.confirming = '';
+            btn.classList.remove('confirming');
+            return true;
+        }
+
+        function showCardError(card, msg) {
+            let err = card.querySelector('.card-error');
+            if (!err) { err = document.createElement('div'); err.className = 'card-error'; card.appendChild(err); }
+            err.textContent = msg;
+            setTimeout(() => err.remove(), 6000);
+        }
+
         function markAsPublished(promoId) {
-            if (!confirm('Mark this promotion as published? It will be archived from the pending list.')) return;
+            const card = document.querySelector(`.promo-card[data-id="${promoId}"]`);
+            const btn = card && card.querySelector('.approve-btn');
+            if (!btn) return;
+            if (!_requireConfirm(btn, 'Confirm published', 'Mark Published')) return;
             const promo = dashboardData && dashboardData.pending_promotions.find(p => p.promotion_id == promoId);
             trackEvent('mark_published', { promotion_id: parseInt(promoId, 10), post_id: promo?.post_id, platform: promo?.platform });
-            const card = document.querySelector(`.promo-card[data-id="${promoId}"]`);
-            if (card) setCardUpdating(card, true);
+            setCardUpdating(card, true);
             fetch(`/api/mark-published/${promoId}`, { method: 'POST' })
                 .then(res => res.ok ? res.json() : Promise.reject(res))
-                .then(() => {
-                    if (card) archiveCard(card, 'Published');
-                    loadDashboard();
-                })
+                .then(() => { archiveCard(card, 'Published'); loadDashboard(); })
                 .catch(err => {
-                    if (card) setCardUpdating(card, false);
-                    const msg = err.status ? `Server error ${err.status}. Check console.` : 'Could not reach server.';
-                    alert(msg);
-                    if (err.status) fetch(err.url).then(r => r.text()).then(t => console.error(t));
+                    setCardUpdating(card, false);
+                    showCardError(card, err.status ? `Server error ${err.status}.` : 'Could not reach server.');
                 });
         }
 
         function skipPromotion(promoId) {
-            if (!confirm('Skip this promotion? It will be archived as skipped.')) return;
+            const card = document.querySelector(`.promo-card[data-id="${promoId}"]`);
+            const btn = card && card.querySelector('.skip-btn');
+            if (!btn) return;
+            if (!_requireConfirm(btn, 'Confirm skip', 'Skip')) return;
             const promo = dashboardData && dashboardData.pending_promotions.find(p => p.promotion_id == promoId);
             trackEvent('skip', { promotion_id: parseInt(promoId, 10), post_id: promo?.post_id, platform: promo?.platform });
-            const card = document.querySelector(`.promo-card[data-id="${promoId}"]`);
-            if (card) setCardUpdating(card, true);
+            setCardUpdating(card, true);
             fetch(`/api/skip-promotion/${promoId}`, { method: 'POST' })
                 .then(res => res.ok ? res.json() : Promise.reject(res))
-                .then(() => {
-                    if (card) archiveCard(card, 'Skipped');
-                    loadDashboard();
-                })
+                .then(() => { archiveCard(card, 'Skipped'); loadDashboard(); })
                 .catch(err => {
-                    if (card) setCardUpdating(card, false);
-                    const msg = err.status ? `Server error ${err.status}. Check console.` : 'Could not reach server.';
-                    alert(msg);
-                    if (err.status) fetch(err.url).then(r => r.text()).then(t => console.error(t));
+                    setCardUpdating(card, false);
+                    showCardError(card, err.status ? `Server error ${err.status}.` : 'Could not reach server.');
                 });
         }
 
         function setCardUpdating(card, updating) {
-            const buttons = card.querySelectorAll('.actions button');
-            buttons.forEach(btn => {
+            card.querySelectorAll('.actions button').forEach(btn => {
                 btn.disabled = updating;
                 if (updating && (btn.classList.contains('approve-btn') || btn.classList.contains('skip-btn')))
-                    btn.textContent = '… Updating';
-                else if (btn.classList.contains('approve-btn')) btn.textContent = '✓ Mark Published';
-                else if (btn.classList.contains('skip-btn')) btn.textContent = '✕ Skip';
+                    btn.textContent = 'Updating…';
+                else if (btn.classList.contains('approve-btn')) btn.textContent = 'Mark Published';
+                else if (btn.classList.contains('skip-btn')) btn.textContent = 'Skip';
             });
         }
 
@@ -851,16 +1172,19 @@
         }
 
         function markTaskComplete(taskId) {
-            if (confirm('Mark this task as complete?')) {
-                trackEvent('task_complete', { task_id: parseInt(taskId, 10) });
-                fetch(`/api/complete-task/${taskId}`, {
-                    method: 'POST'
-                }).then(() => {
-                    loadDashboard();
-                }).catch(() => {
-                    alert('Could not connect to agent API. Manually update database if needed.');
+            const taskEl = document.querySelector(`.task-item [onclick="markTaskComplete('${taskId}')"]`);
+            if (taskEl && !_requireConfirm(taskEl, 'Confirm complete', 'Mark Complete')) return;
+            trackEvent('task_complete', { task_id: parseInt(taskId, 10) });
+            fetch(`/api/complete-task/${taskId}`, { method: 'POST' })
+                .then(() => loadDashboard())
+                .catch(() => {
+                    if (taskEl) { taskEl.disabled = false; taskEl.textContent = 'Mark Complete'; }
                 });
-            }
+        }
+
+        function debounce(fn, ms) {
+            let t;
+            return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
         }
 
         let _inventoryBuildPollTimer = null;
@@ -938,6 +1262,8 @@
             applyInventoryFilters();
         }
 
+        const applyInventoryFiltersDebounced = debounce(applyInventoryFilters, 180);
+
         function highlightMatch(text, term) {
             if (!term || !text) return escapeHtml(text || '');
             const safe = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -1004,8 +1330,8 @@
         function triggerInventoryBuild() {
             const btn = document.getElementById('build-btn');
             const msg = document.getElementById('inventory-status-msg');
-            if (btn) { btn.disabled = true; btn.textContent = '⏳ Building…'; }
-            if (msg) msg.textContent = 'Starting build — this may take a few minutes…';
+            if (btn) { btn.disabled = true; btn.textContent = 'Building…'; }
+            if (msg) msg.textContent = 'Starting build. This may take a few minutes…';
 
             fetch('/api/inventory/build', { method: 'POST' })
                 .then(res => res.ok ? res.json() : Promise.reject(res))
@@ -1016,7 +1342,7 @@
                     startBuildStatusPolling();
                 })
                 .catch(() => {
-                    if (btn) { btn.disabled = false; btn.textContent = '🔨 Build / Refresh Inventory'; }
+                    if (btn) { btn.disabled = false; btn.textContent = 'Build / Refresh Inventory'; }
                     if (msg) msg.textContent = 'Could not start build. Is the server running?';
                 });
         }
@@ -1037,7 +1363,7 @@
                     } else {
                         clearInterval(_inventoryBuildPollTimer);
                         _inventoryBuildPollTimer = null;
-                        if (btn) { btn.disabled = false; btn.textContent = '🔨 Build / Refresh Inventory'; }
+                        if (btn) { btn.disabled = false; btn.textContent = 'Build / Refresh Inventory'; }
                         if (state.error) {
                             if (msg) msg.textContent = `Build failed: ${state.error}`;
                         } else if (state.last_run) {
@@ -1060,7 +1386,70 @@
                     const msg = document.getElementById('inventory-status-msg');
                     if (msg) { msg.textContent = 'article_inventory.md exported.'; setTimeout(() => { msg.textContent = ''; }, 3000); }
                 })
-                .catch(() => alert('Export failed. Check the server logs.'));
+                .catch(() => {
+                    const msg = document.getElementById('inventory-status-msg');
+                    if (msg) { msg.textContent = 'Export failed. Check the server logs.'; setTimeout(() => { msg.textContent = ''; }, 5000); }
+                });
+        }
+
+        let _substackSyncPollTimer = null;
+
+        function triggerSubstackSync() {
+            const btn = document.getElementById('sync-btn');
+            const msg = document.getElementById('sync-status-msg');
+            if (btn) { btn.disabled = true; btn.textContent = 'Syncing…'; }
+            if (msg) msg.textContent = 'Checking RSS and refreshing profile…';
+
+            fetch('/api/sync-substack', { method: 'POST' })
+                .then(res => res.ok ? res.json() : Promise.reject(res))
+                .then(data => {
+                    if (data.status === 'already_running') {
+                        if (msg) msg.textContent = 'Sync already running…';
+                    }
+                    startSyncStatusPolling();
+                })
+                .catch(() => {
+                    if (btn) { btn.disabled = false; btn.textContent = 'Sync Substack'; }
+                    if (msg) msg.textContent = 'Could not start sync. Is the server running?';
+                });
+        }
+
+        function startSyncStatusPolling() {
+            if (_substackSyncPollTimer) clearInterval(_substackSyncPollTimer);
+            _substackSyncPollTimer = setInterval(pollSyncStatus, 3000);
+        }
+
+        function pollSyncStatus() {
+            fetch('/api/sync-substack/status')
+                .then(res => res.ok ? res.json() : Promise.reject(res))
+                .then(state => {
+                    const btn = document.getElementById('sync-btn');
+                    const msg = document.getElementById('sync-status-msg');
+                    if (state.running) {
+                        if (msg) msg.textContent = 'Syncing…';
+                    } else {
+                        clearInterval(_substackSyncPollTimer);
+                        _substackSyncPollTimer = null;
+                        if (btn) { btn.disabled = false; btn.textContent = 'Sync Substack'; }
+                        if (state.error) {
+                            const offline = !navigator.onLine ? ' (you appear to be offline)' : '';
+                            if (msg) msg.textContent = `Sync failed: ${state.error}${offline}`;
+                        } else if (state.last_run) {
+                            const ts = new Date(state.last_run).toLocaleTimeString();
+                            const newLabel = state.new_posts > 0
+                                ? `${state.new_posts} new post${state.new_posts > 1 ? 's' : ''} found`
+                                : 'No new posts';
+                            if (msg) msg.textContent = `${newLabel} · ${ts}`;
+                            localStorage.setItem('sync-last-run', state.last_run);
+                            localStorage.setItem('sync-new-posts', state.new_posts);
+                            loadDashboard();
+                        }
+                    }
+                })
+                .catch(() => {
+                    clearInterval(_substackSyncPollTimer);
+                    _substackSyncPollTimer = null;
+                });
         }
 
         function initCollapsibleSections() {
@@ -1077,29 +1466,123 @@
                 // Wrap all siblings after h2 in a content div
                 const content = document.createElement('div');
                 content.className = 'section-content';
+                content.id = 'section-content-' + sectionId;
                 [...section.children].forEach(child => {
                     if (child !== h2) content.appendChild(child);
                 });
                 section.appendChild(content);
 
-                // Add chevron indicator
+                // Add chevron indicator (decorative only)
                 const chevron = document.createElement('span');
                 chevron.className = 'section-chevron';
+                chevron.setAttribute('aria-hidden', 'true');
                 chevron.textContent = '▾';
                 h2.appendChild(chevron);
+
+                // Accordion ARIA
+                const initiallyCollapsed = localStorage.getItem(storageKey) !== '0';
+                h2.setAttribute('tabindex', '0');
+                h2.setAttribute('aria-expanded', initiallyCollapsed ? 'false' : 'true');
+                h2.setAttribute('aria-controls', content.id);
 
                 // Toggle on click
                 h2.addEventListener('click', () => {
                     const collapsed = section.classList.toggle('collapsed');
+                    h2.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
                     localStorage.setItem(storageKey, collapsed ? '1' : '0');
                 });
 
+                // Keyboard contract for interactive h2 (Enter / Space)
+                h2.addEventListener('keydown', e => {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); h2.click(); }
+                });
+
                 // Restore saved state
-                if (localStorage.getItem(storageKey) === '1') {
+                if (initiallyCollapsed) {
                     section.classList.add('collapsed');
                 }
             });
         }
+
+        // ── KEYBOARD SHORTCUTS ─────────────────────────────────────────
+        // Arrow Up/Down: move focus between promo cards
+        // C: copy  S: skip  P: mark published  E: toggle edit  Esc: cancel confirm
+
+        let _focusedCardIndex = -1;
+
+        function getPromoCards() {
+            return Array.from(document.querySelectorAll('#promotions-list .promo-card:not(.archived)'));
+        }
+
+        function setFocusedCard(index) {
+            const cards = getPromoCards();
+            cards.forEach(c => c.classList.remove('keyboard-focused'));
+            if (index < 0 || index >= cards.length) { _focusedCardIndex = -1; return; }
+            _focusedCardIndex = index;
+            cards[index].classList.add('keyboard-focused');
+            cards[index].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function getFocusedCard() {
+            const cards = getPromoCards();
+            return _focusedCardIndex >= 0 && _focusedCardIndex < cards.length
+                ? cards[_focusedCardIndex] : null;
+        }
+
+        function inTextField() {
+            const el = document.activeElement;
+            return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
+        }
+
+        document.addEventListener('keydown', e => {
+            if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+            if (e.key === 'ArrowDown' && !inTextField()) {
+                e.preventDefault();
+                const cards = getPromoCards();
+                setFocusedCard(Math.min(_focusedCardIndex + 1, cards.length - 1));
+                if (_focusedCardIndex < 0 && cards.length) setFocusedCard(0);
+                return;
+            }
+            if (e.key === 'ArrowUp' && !inTextField()) {
+                e.preventDefault();
+                if (_focusedCardIndex > 0) setFocusedCard(_focusedCardIndex - 1);
+                return;
+            }
+            if (e.key === 'Escape') {
+                const card = getFocusedCard();
+                if (card) {
+                    card.querySelectorAll('[data-confirming="true"]').forEach(btn => {
+                        clearTimeout(btn._confirmTimer);
+                        btn.dataset.confirming = '';
+                        btn.classList.remove('confirming');
+                        if (btn.classList.contains('skip-btn')) btn.textContent = 'Skip';
+                        else if (btn.classList.contains('approve-btn')) btn.textContent = 'Mark Published';
+                    });
+                }
+                return;
+            }
+
+            if (inTextField()) return;
+
+            const card = getFocusedCard();
+            if (!card) return;
+            const promoId = card.dataset.id;
+
+            if (e.key === 'c' || e.key === 'C') { e.preventDefault(); copyToClipboard(promoId); }
+            else if (e.key === 's' || e.key === 'S') { e.preventDefault(); skipPromotion(promoId); }
+            else if (e.key === 'p' || e.key === 'P') { e.preventDefault(); markAsPublished(promoId); }
+            else if (e.key === 'e' || e.key === 'E') { e.preventDefault(); toggleEdit(promoId); }
+        });
+
+        // Click on a card to focus it for keyboard use
+        document.getElementById('promotions-list').addEventListener('click', e => {
+            const card = e.target.closest('.promo-card');
+            if (!card) return;
+            const cards = getPromoCards();
+            const idx = cards.indexOf(card);
+            if (idx >= 0) setFocusedCard(idx);
+        }, true);
 
         // Load dashboard on page load and refresh every 5 minutes
         initCollapsibleSections();

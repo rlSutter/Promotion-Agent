@@ -6,6 +6,8 @@ and provides a review/release dashboard.
 """
 
 import os
+import sys
+import io
 import shutil
 import json
 import sqlite3
@@ -21,6 +23,11 @@ import time
 from typing import Dict, List, Optional, Tuple, Any
 from dotenv import load_dotenv
 
+# Windows cp1252 stdout breaks on any non-Latin Unicode (post titles, arrows, etc.)
+if hasattr(sys.stdout, 'buffer') and sys.stdout.encoding.lower().replace('-', '') != 'utf8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
 # Paths: use script directory so DB and files work from any cwd (Windows/OneDrive)
 _script_dir = Path(__file__).resolve().parent
 
@@ -35,7 +42,7 @@ load_dotenv()
 # Configuration
 _raw_substack = os.getenv("SUBSTACK_URL", "https://yoursubstack.substack.com/feed")
 
-# Fix common mistake: /publish/home (private dashboard) → /feed (public RSS)
+# Fix common mistake: /publish/home (private dashboard) -> /feed (public RSS)
 if "/publish" in _raw_substack or (_raw_substack.rstrip("/").endswith("substack.com") and "/feed" not in _raw_substack):
     from urllib.parse import urlparse
     parsed = urlparse(_raw_substack)
@@ -97,7 +104,7 @@ class PromotionAgent:
                 print(f"[DB] Error: Could not create database at {self.db_path}", flush=True)
                 print(f"[DB] First error: {e}", flush=True)
                 print(f"[DB] URI fallback error: {e2}", flush=True)
-                print("[DB] Try: right-click project folder → 'Always keep on this device' (OneDrive); check permissions.", flush=True)
+                print("[DB] Try: right-click project folder -> 'Always keep on this device' (OneDrive); check permissions.", flush=True)
                 raise
         else:
             self._use_db_uri = False
@@ -307,7 +314,7 @@ class PromotionAgent:
                   post_data["discovered_date"]))
             
             new_posts.append(post_data)
-            print(f"  → New post detected: {entry.title}")
+            print(f"  -> New post detected: {entry.title}")
         
         conn.commit()
         conn.close()
@@ -417,8 +424,8 @@ Return ONLY the promotional post text, including the link at the end ({url})."""
             err_msg = str(e).lower()
             if "credit" in err_msg or "billing" in err_msg or "balance" in err_msg:
                 print("\n[ERROR] Anthropic API: Your credit balance is too low.")
-                print("  → Go to https://console.anthropic.com/ → Plans & Billing")
-                print("  → Add credits or upgrade, then restart the agent.")
+                print("  -> Go to https://console.anthropic.com/ -> Plans & Billing")
+                print("  -> Add credits or upgrade, then restart the agent.")
             raise
         except anthropic.APIStatusError as e:
             print(f"\n[ERROR] Anthropic API error ({e.status_code}): {e}")
@@ -427,16 +434,16 @@ Return ONLY the promotional post text, including the link at the end ({url})."""
     def _process_new_post_impl(self, post: Dict):
         """Implementation of process_new_post (called inside try/except for API errors)."""
         # Step 1: Extract outward sentence
-        print("  → Extracting outward sentence...")
+        print("  -> Extracting outward sentence...")
         outward_sentence = self.extract_outward_sentence(post["title"], post["content"])
         print(f"     '{outward_sentence}'")
 
         # Step 2: Determine platform
         platform = self.determine_platform(post["title"], post["content"])
-        print(f"  → Routed to: {platform}")
+        print(f"  -> Routed to: {platform}")
 
         # Step 3: Generate promotional post
-        print("  → Generating promotional post...")
+        print("  -> Generating promotional post...")
         promo_post = self.generate_promotional_post(
             post["title"], post["content"], outward_sentence, platform, post["url"]
         )
@@ -451,13 +458,13 @@ Return ONLY the promotional post text, including the link at the end ({url})."""
         conn.commit()
         conn.close()
 
-        print("  → Saved to review dashboard")
+        print("  -> Saved to review dashboard")
 
         # Generate ecosystem commenting suggestions
         self.generate_commenting_tasks(post["id"], post["title"], platform)
 
         # Add to article inventory
-        print("  → Adding to article inventory...")
+        print("  -> Adding to article inventory...")
         self.add_article_to_inventory(
             post["id"], post["title"], post["url"],
             post["published_date"], "", post["content"]

@@ -406,6 +406,9 @@ def stats():
 _inventory_build_state = {"running": False, "last_run": None, "count": 0, "error": None}
 _inventory_build_lock = threading.Lock()
 
+_substack_sync_state = {"running": False, "last_run": None, "new_posts": 0, "error": None}
+_substack_sync_lock = threading.Lock()
+
 
 def _run_inventory_build_thread():
     global _inventory_build_state
@@ -486,6 +489,66 @@ def export_inventory_markdown():
         return jsonify({"status": "success"})
     except Exception as e:
         return jsonify({"status": "error", "error": str(e)}), 500
+
+
+def _run_substack_sync_thread():
+    global _substack_sync_state
+    with _substack_sync_lock:
+        _substack_sync_state["running"] = True
+        _substack_sync_state["error"] = None
+    try:
+        from agent import PromotionAgent
+        agent = PromotionAgent()
+
+        # Count promotions before to detect new ones
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        try:
+            c.execute("SELECT COUNT(*) FROM promotions")
+            before = c.fetchone()[0]
+        except sqlite3.OperationalError:
+            before = 0
+        conn.close()
+
+        agent.check_for_new_posts()
+        agent.fetch_substack_profile()
+
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        try:
+            c.execute("SELECT COUNT(*) FROM promotions")
+            after = c.fetchone()[0]
+        except sqlite3.OperationalError:
+            after = 0
+        conn.close()
+
+        with _substack_sync_lock:
+            _substack_sync_state["running"] = False
+            _substack_sync_state["last_run"] = datetime.now().isoformat()
+            _substack_sync_state["new_posts"] = max(0, after - before)
+    except Exception as e:
+        with _substack_sync_lock:
+            _substack_sync_state["running"] = False
+            _substack_sync_state["error"] = str(e)
+        print(f"[Sync] Substack sync failed: {e}", flush=True)
+
+
+@app.route('/api/sync-substack', methods=['POST'])
+def trigger_substack_sync():
+    """Immediately check the RSS feed for new posts and refresh profile stats."""
+    with _substack_sync_lock:
+        if _substack_sync_state["running"]:
+            return jsonify({"status": "already_running"})
+    t = threading.Thread(target=_run_substack_sync_thread, daemon=True)
+    t.start()
+    return jsonify({"status": "started"})
+
+
+@app.route('/api/sync-substack/status')
+def substack_sync_status():
+    """Return the current state of the Substack sync."""
+    with _substack_sync_lock:
+        return jsonify(dict(_substack_sync_state))
 
 
 if __name__ == '__main__':

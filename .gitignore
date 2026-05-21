@@ -1,6 +1,9 @@
 # Environment variables
 .env
 
+# Claude Code settings (machine-specific, not for version control)
+.claude/
+
 # Database
 *.db
 *.db-journal
@@ -51,3 +54,6 @@ logs/
 
 # Data directory
 data/
+
+# Personal work notes
+WORK_NOTES.md

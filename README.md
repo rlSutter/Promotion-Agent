@@ -2,6 +2,18 @@
 
 An autonomous agent that implements a "promote sentences, not articles" strategy for every Substack post you publish. It runs in the background, monitors your RSS feed, and drafts platform-specific promotional content for your review — so promotion takes 15 minutes instead of 45.
 
+## Why This Exists
+
+Publishing on Substack is the hard part. Promotion is supposed to be the easy part — but in practice it takes 30 to 45 minutes per post, most of which is mechanical work that produces inconsistent results: picking what to quote, rewriting it for each platform's register, deciding where to comment this week, trying to remember what you wrote six months ago.
+
+That friction compounds. Writers who promote consistently grow faster than writers who publish more but promote sporadically. The bottleneck is not ideas or audience — it is the post-publish ritual being unpleasant enough that it gets skipped.
+
+The core insight behind this tool is that most of that ritual is *systematic*, not creative. There is a structure to a good LinkedIn post, a structure to a good Bluesky note, a structure to useful ecosystem commenting. Once you know the structure, the work is mostly substitution: plug in the post's core claim, format it for the platform, add the link. A machine can do that substitution better and faster than a writer who just finished publishing and wants to be done.
+
+What a machine cannot do is judge whether the claim is stated well, whether the voice sounds right, or whether the generated post matches what the writer actually wanted to say. That judgment belongs to the writer, and this tool preserves it. Every piece of content passes through a review step before it goes anywhere. The agent handles the systematic; the writer handles the judgment.
+
+The design reflects a specific workflow: open the dashboard after publishing, spend 15 minutes reviewing and copying, close it. Not an always-on command center. Not a social media management platform. A focused ritual replacement for a solo writer who publishes thoughtfully and wants promotion to match.
+
 ## What It Does
 
 Every time you publish a post on Substack, the agent automatically:

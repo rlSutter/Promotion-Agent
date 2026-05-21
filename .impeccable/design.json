@@ -1,0 +1,357 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-20T00:00:00Z",
+  "title": "Design System: Promotion Review Dashboard",
+  "extensions": {
+    "colorMeta": {
+      "editorial-plum": {
+        "role": "primary",
+        "displayName": "Editorial Plum",
+        "canonical": "oklch(45% 0.215 293)",
+        "tonalRamp": [
+          "oklch(15% 0.14 293)",
+          "oklch(25% 0.18 293)",
+          "oklch(35% 0.21 293)",
+          "oklch(45% 0.215 293)",
+          "oklch(56% 0.205 293)",
+          "oklch(68% 0.155 293)",
+          "oklch(82% 0.08 293)",
+          "oklch(93% 0.035 293)"
+        ]
+      },
+      "editorial-plum-deep": {
+        "role": "primary",
+        "displayName": "Editorial Plum Deep",
+        "canonical": "oklch(38% 0.21 293)",
+        "tonalRamp": []
+      },
+      "editorial-plum-tint": {
+        "role": "primary",
+        "displayName": "Editorial Plum Tint",
+        "canonical": "oklch(93% 0.035 293)",
+        "tonalRamp": []
+      },
+      "action-affirm": {
+        "role": "secondary",
+        "displayName": "Affirm Green",
+        "canonical": "oklch(67% 0.185 142)",
+        "tonalRamp": [
+          "oklch(18% 0.12 142)",
+          "oklch(28% 0.16 142)",
+          "oklch(40% 0.18 142)",
+          "oklch(52% 0.185 142)",
+          "oklch(67% 0.185 142)",
+          "oklch(78% 0.155 142)",
+          "oklch(88% 0.09 142)",
+          "oklch(95% 0.04 142)"
+        ]
+      },
+      "action-edit": {
+        "role": "secondary",
+        "displayName": "Edit Blue",
+        "canonical": "oklch(61% 0.19 246)",
+        "tonalRamp": [
+          "oklch(18% 0.12 246)",
+          "oklch(28% 0.16 246)",
+          "oklch(40% 0.18 246)",
+          "oklch(52% 0.19 246)",
+          "oklch(61% 0.19 246)",
+          "oklch(73% 0.165 246)",
+          "oklch(85% 0.09 246)",
+          "oklch(94% 0.04 246)"
+        ]
+      },
+      "action-stage": {
+        "role": "secondary",
+        "displayName": "Stage Orange",
+        "canonical": "oklch(73% 0.175 55)",
+        "tonalRamp": [
+          "oklch(20% 0.10 55)",
+          "oklch(30% 0.14 55)",
+          "oklch(45% 0.165 55)",
+          "oklch(58% 0.175 55)",
+          "oklch(73% 0.175 55)",
+          "oklch(82% 0.14 55)",
+          "oklch(90% 0.08 55)",
+          "oklch(96% 0.035 55)"
+        ]
+      },
+      "action-dismiss": {
+        "role": "secondary",
+        "displayName": "Dismiss Red",
+        "canonical": "oklch(58% 0.215 27)",
+        "tonalRamp": [
+          "oklch(18% 0.14 27)",
+          "oklch(28% 0.185 27)",
+          "oklch(40% 0.205 27)",
+          "oklch(50% 0.215 27)",
+          "oklch(58% 0.215 27)",
+          "oklch(70% 0.18 27)",
+          "oklch(84% 0.10 27)",
+          "oklch(94% 0.04 27)"
+        ]
+      },
+      "action-teal": {
+        "role": "secondary",
+        "displayName": "Export Teal",
+        "canonical": "oklch(58% 0.135 179)",
+        "tonalRamp": [
+          "oklch(18% 0.09 179)",
+          "oklch(28% 0.115 179)",
+          "oklch(40% 0.13 179)",
+          "oklch(52% 0.135 179)",
+          "oklch(58% 0.135 179)",
+          "oklch(70% 0.115 179)",
+          "oklch(83% 0.07 179)",
+          "oklch(94% 0.03 179)"
+        ]
+      },
+      "page-canvas": {
+        "role": "neutral",
+        "displayName": "Page Canvas",
+        "canonical": "oklch(97% 0.003 60)",
+        "tonalRamp": [
+          "oklch(20% 0.005 60)",
+          "oklch(35% 0.005 60)",
+          "oklch(50% 0.004 60)",
+          "oklch(65% 0.004 60)",
+          "oklch(78% 0.003 60)",
+          "oklch(88% 0.003 60)",
+          "oklch(94% 0.003 60)",
+          "oklch(97% 0.003 60)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Surface",
+        "canonical": "oklch(100% 0 0)",
+        "tonalRamp": []
+      },
+      "text-primary": {
+        "role": "neutral",
+        "displayName": "Text Primary",
+        "canonical": "oklch(28% 0 0)",
+        "tonalRamp": []
+      },
+      "platform-linkedin": {
+        "role": "tertiary",
+        "displayName": "LinkedIn Blue",
+        "canonical": "oklch(47% 0.15 243)",
+        "tonalRamp": []
+      },
+      "platform-substack": {
+        "role": "tertiary",
+        "displayName": "Substack Orange",
+        "canonical": "oklch(67% 0.195 37)",
+        "tonalRamp": []
+      },
+      "platform-bluesky": {
+        "role": "tertiary",
+        "displayName": "Bluesky Blue",
+        "canonical": "oklch(60% 0.19 249)",
+        "tonalRamp": []
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Dashboard page heading. One per page."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Post titles inside promo cards."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Section headings (collapsible h2 elements)."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "All interface prose: descriptions, status, task text. Max 65ch line length."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Field labels, column headers, platform badge text. Always uppercase."
+      },
+      "content": {
+        "displayName": "Content",
+        "purpose": "Promotional post copy, outward sentences, textarea editing. The writer's voice on screen."
+      },
+      "micro": {
+        "displayName": "Micro",
+        "purpose": "Timestamps, search result counts, archived state indicators."
+      }
+    },
+    "shadows": [
+      {
+        "name": "ambient-lift",
+        "value": "0 2px 4px rgba(0,0,0,0.1)",
+        "purpose": "Section containers and page header only. Separates the main content layer from the page canvas. Never applied to inner cards."
+      },
+      {
+        "name": "focus-ring",
+        "value": "0 0 0 2px rgba(103,58,183,0.12)",
+        "purpose": "Search inputs and text fields at focus state. Paired with border-color: #673AB7."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-transition",
+        "value": "all 0.2s ease",
+        "purpose": "Default transition for button hover states."
+      },
+      {
+        "name": "chevron-rotate",
+        "value": "transform 0.2s ease",
+        "purpose": "Section collapse toggle chevron rotation."
+      },
+      {
+        "name": "border-shift",
+        "value": "border-color 0.15s ease",
+        "purpose": "Input focus border color shift and promo card hover border."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "max-content",
+        "value": "900px",
+        "purpose": "Single-column max-width. This tool never reflows into multi-column."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Button: Affirm (Copy)",
+      "kind": "button",
+      "refersTo": "button-affirm",
+      "description": "Primary affirming action. Used for Copy-to-clipboard and any yes/confirm action.",
+      "html": "<button class=\"ds-btn-affirm\">Copy</button>",
+      "css": ".ds-btn-affirm { background: #4CAF50; color: #ffffff; padding: 10px 20px; border: none; border-radius: 4px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; cursor: pointer; transition: background 0.2s; } .ds-btn-affirm:hover { background: #45a049; } .ds-btn-affirm:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(103,58,183,0.25); }"
+    },
+    {
+      "name": "Button: Dismiss (Skip)",
+      "kind": "button",
+      "refersTo": "button-dismiss",
+      "description": "Dismissal action. Used for Skip. Signals 'not this one' without alarming.",
+      "html": "<button class=\"ds-btn-dismiss\">Skip</button>",
+      "css": ".ds-btn-dismiss { background: #f44336; color: #ffffff; padding: 10px 20px; border: none; border-radius: 4px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; cursor: pointer; transition: background 0.2s; } .ds-btn-dismiss:hover { background: #da190b; } .ds-btn-dismiss:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(103,58,183,0.25); }"
+    },
+    {
+      "name": "Button: Build (Editorial Plum)",
+      "kind": "button",
+      "refersTo": "button-build",
+      "description": "System-intelligence action. Used for inventory build, classify, and other agent-driven operations. Compact size for toolbar contexts.",
+      "html": "<button class=\"ds-btn-build\">Build / Refresh Inventory</button>",
+      "css": ".ds-btn-build { background: #673AB7; color: #ffffff; padding: 8px 16px; border: none; border-radius: 4px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; cursor: pointer; transition: background 0.2s; } .ds-btn-build:hover { background: #512DA8; } .ds-btn-build:disabled { background: #9E9E9E; cursor: not-allowed; } .ds-btn-build:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(103,58,183,0.25); }"
+    },
+    {
+      "name": "Topic Chip",
+      "kind": "chip",
+      "refersTo": "chip-topic",
+      "description": "Categorical label for article topics. Uses Editorial Plum tint palette. Compact and text-forward.",
+      "html": "<span class=\"ds-chip-topic\">leadership</span>",
+      "css": ".ds-chip-topic { background: #EDE7F6; color: #512DA8; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: inline-block; line-height: 1.6; }"
+    },
+    {
+      "name": "Platform Badge",
+      "kind": "chip",
+      "refersTo": "badge-platform",
+      "description": "Platform identity marker. Uses each platform's canonical brand color. Never repurposed for other UI elements.",
+      "html": "<span class=\"ds-badge-platform ds-badge-substack\">Substack Notes</span> <span class=\"ds-badge-platform ds-badge-linkedin\">LinkedIn</span> <span class=\"ds-badge-platform ds-badge-bluesky\">Bluesky</span>",
+      "css": ".ds-badge-platform { display: inline-block; color: #ffffff; padding: 4px 12px; border-radius: 12px; font-size: 12px; text-transform: uppercase; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; letter-spacing: 0.3px; } .ds-badge-substack { background: #FF6719; } .ds-badge-linkedin { background: #0077B5; } .ds-badge-bluesky { background: #1185FE; }"
+    },
+    {
+      "name": "Search Input",
+      "kind": "input",
+      "refersTo": "button-neutral",
+      "description": "Text field with Editorial Plum focus ring. Used in inventory search bar. Label is always uppercase sans at 11px.",
+      "html": "<div class=\"ds-search-field\"><label class=\"ds-search-label\" for=\"ds-search\">Search</label><input type=\"text\" id=\"ds-search\" class=\"ds-search-input\" placeholder=\"title, subtitle, or summary…\"></div>",
+      "css": ".ds-search-field { display: flex; flex-direction: column; gap: 4px; } .ds-search-label { font-size: 11px; font-weight: 600; color: #666666; text-transform: uppercase; letter-spacing: 0.5px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; } .ds-search-input { padding: 7px 10px; border: 1px solid #dddddd; border-radius: 4px; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #ffffff; outline: none; transition: border-color 0.15s; color: #333333; } .ds-search-input:focus { border-color: #673AB7; box-shadow: 0 0 0 2px rgba(103,58,183,0.12); }"
+    },
+    {
+      "name": "Promo Card",
+      "kind": "card",
+      "refersTo": "button-affirm",
+      "description": "The primary unit of work. Contains post title, platform badge, outward sentence, promotional post copy, and action row. Hover signals actionability via border color shift.",
+      "html": "<div class=\"ds-promo-card\"><div class=\"ds-post-title\">Why Substack Writers Plateau at 500 Subscribers</div><span class=\"ds-badge-platform ds-badge-substack\">Substack Notes</span><div class=\"ds-field-label\">Outward Sentence</div><div class=\"ds-outward-sentence\">Most writers stop growing not because their writing gets worse, but because they stop making it easy to discover.</div><div class=\"ds-field-label\">Promotional Post</div><div class=\"ds-promo-post\">Most writers plateau at 500 subscribers and can't figure out why.\n\nThe writing hasn't gotten worse. The ideas are still there.\n\nThe real issue? Discoverability.</div><div class=\"ds-card-actions\"><button class=\"ds-card-btn ds-card-btn-affirm\">Copy</button><button class=\"ds-card-btn ds-card-btn-edit\">Edit</button><button class=\"ds-card-btn ds-card-btn-stage\">Mark Published</button><button class=\"ds-card-btn ds-card-btn-dismiss\">Skip</button></div></div>",
+      "css": ".ds-promo-card { background: #fafafa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 20px; transition: border-color 0.2s; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; } .ds-promo-card:hover { border-color: #4CAF50; } .ds-post-title { font-weight: 600; color: #333333; margin-bottom: 10px; font-size: 18px; line-height: 1.4; } .ds-badge-platform { display: inline-block; color: #ffffff; padding: 4px 12px; border-radius: 12px; font-size: 12px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.3px; margin-bottom: 15px; } .ds-badge-substack { background: #FF6719; } .ds-field-label { font-weight: 600; color: #555555; margin-top: 15px; margin-bottom: 5px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; } .ds-outward-sentence { background: #f0faf0; padding: 15px; border-radius: 4px; margin-bottom: 15px; font-style: italic; color: #333333; font-family: Georgia, serif; font-size: 15px; line-height: 1.7; } .ds-promo-post { background: #ffffff; padding: 15px; border: 1px solid #dddddd; border-radius: 4px; white-space: pre-wrap; font-family: Georgia, serif; font-size: 15px; line-height: 1.7; color: #333333; } .ds-card-actions { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; } .ds-card-btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; transition: background 0.2s; color: #ffffff; } .ds-card-btn-affirm { background: #4CAF50; } .ds-card-btn-affirm:hover { background: #45a049; } .ds-card-btn-edit { background: #2196F3; } .ds-card-btn-edit:hover { background: #0b7dda; } .ds-card-btn-stage { background: #FF9800; } .ds-card-btn-stage:hover { background: #e68900; } .ds-card-btn-dismiss { background: #f44336; } .ds-card-btn-dismiss:hover { background: #da190b; }"
+    },
+    {
+      "name": "Section Container",
+      "kind": "card",
+      "refersTo": "button-neutral",
+      "description": "Primary layout unit. White surface lifted from the page canvas with a single ambient shadow. All major dashboard sections use this container.",
+      "html": "<div class=\"ds-section\"><h2 class=\"ds-section-heading\">Pending Promotions <span class=\"ds-chevron\">›</span></h2><p class=\"ds-section-desc\">Review and dispatch drafted promotional posts.</p></div>",
+      "css": ".ds-section { background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; } .ds-section-heading { color: #333333; font-size: 16px; font-weight: 600; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 2px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; } .ds-section-heading:hover { color: #555555; } .ds-chevron { font-size: 18px; color: #bbbbbb; transition: transform 0.2s; line-height: 1; } .ds-section-desc { color: #666666; font-size: 14px; line-height: 1.6; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Morning Edit",
+    "overview": "This is a writer's quiet back office — not a product to be admired, but a ritual to be completed. The design takes its cue from the writer's most natural workspaces: the calm of a trusted editor, the restraint of a well-made notebook, the focus of a morning already half-organized before you sat down. Every session has the same shape: arrive, review, decide, dispatch. The interface should feel like it was expecting you.\n\nThe palette runs almost entirely on tinted neutrals and a tight family of semantic action colors. One true accent — Editorial Plum — signals the system's own intelligence: inventory, classification, search focus. Everything else is functional. Green to affirm. Red to dismiss. Orange to stage. Nothing decorative.\n\nWhat this system rejects: the bubbly consumer-app dashboard. The generic SaaS surface. The enterprise control panel. This is a personal tool for one writer.",
+    "keyCharacteristics": [
+      "Tinted neutrals as the canvas; Editorial Plum as the single system accent, used sparingly",
+      "Two typographic registers: system sans for interface chrome, Georgia serif for writer content",
+      "Ambient elevation only: sections read as paper layers, shadow is architectural not decorative",
+      "Semantic action palette: each button color maps to one decision category, never reused decoratively",
+      "Personal scale: single column, 900px max, one task at a time"
+    ],
+    "rules": [
+      {
+        "name": "The Single Voice Rule",
+        "body": "Editorial Plum is the system's color, not a general accent. It appears only where the agent's intelligence is present: building inventory, focusing search, classifying content. Never on workflow action buttons. Its rarity is its meaning.",
+        "section": "colors"
+      },
+      {
+        "name": "The Platform Passthrough Rule",
+        "body": "LinkedIn Blue, Substack Orange, and Bluesky Blue are borrowed identity colors. They live only on platform badges. Never reassigned to UI actions or decorative elements.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two Registers Rule",
+        "body": "System sans for dashboard chrome; Georgia for content under review. A promotional post in system sans would feel like the tool is reading the writer's work. Georgia maintains the right distance.",
+        "section": "typography"
+      },
+      {
+        "name": "The Label Case Rule",
+        "body": "Labels are always uppercase with 0.5px letter-spacing. This is the only place uppercase is used. Never apply uppercase to body copy, headings, or button text.",
+        "section": "typography"
+      },
+      {
+        "name": "The Paper Layers Rule",
+        "body": "Three elevation tiers only: canvas, surface (ambient shadow), inner card (border). A fourth tier means nesting has gone too deep. Hover states use color change, not shadow amplification.",
+        "section": "elevation"
+      },
+      {
+        "name": "The No Nested Shadows Rule",
+        "body": "Cards inside sections are border-only. Never apply the ambient-lift shadow to inner cards. It creates a floating quality that breaks the paper-layer metaphor.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Functional Palette Rule",
+        "body": "Each button color maps to one decision category. Reusing affirm green on a non-affirming action, or dismiss red on a non-dismissal, corrupts the signal language. New actions must claim an existing slot or use neutral.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do use Editorial Plum exclusively for system-intelligence actions: inventory build, search focus ring, topic chip text.",
+      "Do render all promotional copy and outward sentences in Georgia, 15px, line-height 1.7.",
+      "Do keep section padding at 30px and inner card padding at 20px.",
+      "Do label action buttons with the outcome, not the mechanism: 'Copy' not 'Clipboard', 'Mark Published' not 'Approve'.",
+      "Do use the semantic action palette consistently. One color per decision category, always the same mapping.",
+      "Do keep section headings as plain text. Remove emoji markers from h2 tags.",
+      "Do cap the layout at 900px. Never reflow into multi-column.",
+      "Do support prefers-reduced-motion by suppressing chevron rotation and section collapse transitions."
+    ],
+    "donts": [
+      "Don't use border-left or border-right greater than 1px as a colored accent on cards, list items, or content blocks.",
+      "Don't use gradient text (background-clip: text) or decorative background gradients.",
+      "Don't add emoji to section headings.",
+      "Don't add a hero-metric template at the top: big numbers, supporting stats, gradient accents.",
+      "Don't build identical card grids: same-sized cards, icon + heading + text, repeated endlessly.",
+      "Don't repurpose LinkedIn Blue, Substack Orange, or Bluesky Blue for any UI element other than platform badges.",
+      "Don't reach for a modal as a first thought for editing or confirmation.",
+      "Don't add sidebar navigation, icon-heavy navbars, or enterprise-density patterns.",
+      "Don't apply box-shadow to inner cards (promo cards, task items, analytics items)."
+    ]
+  }
+}
