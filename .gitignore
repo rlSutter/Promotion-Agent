@@ -67,3 +67,6 @@ defaults.txt
 
 # Claude Code skill lockfile
 skills-lock.json
+
+# Auto-generated runtime data
+article_inventory.md
