@@ -74,7 +74,7 @@ All settings live in `.env`. Key variables:
 | `ANTHROPIC_API_KEY` | ✅ always | From console.anthropic.com |
 | `DASHBOARD_USERNAME` | ✅ for cloud | Blank = no auth (local only) |
 | `DASHBOARD_PASSWORD` | ✅ for cloud | Blank = no auth (local only) |
-| `ANTHROPIC_MODEL` | optional | Default: `claude-sonnet-4-20250514`. See README AI Configuration section. |
+| `ANTHROPIC_MODEL` | optional | Default: `claude-sonnet-4-6`. See README AI Configuration section. |
 | `CHECK_INTERVAL_MINUTES` | optional | Default: 60 |
 | `SUBSTACK_LINKEDIN_HANDLE` | optional | Enables profile stats in Analytics |
 
