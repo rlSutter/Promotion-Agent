@@ -108,7 +108,7 @@ cp .env.example .env
 
 | Variable | Default | Description |
 |---|---|---|
-| `ANTHROPIC_MODEL` | `claude-sonnet-4-20250514` | Claude model to use for all AI calls. See [AI Configuration](#ai-configuration) below. |
+| `ANTHROPIC_MODEL` | `claude-sonnet-4-6` | Claude model to use for all AI calls. See [AI Configuration](#ai-configuration) below. |
 | `CHECK_INTERVAL_MINUTES` | `60` | How often the agent checks for new posts |
 | `SUBSTACK_LINKEDIN_HANDLE` | *(none)* | Your LinkedIn handle — enables Substack profile stats (follower count, subscribers) in the Analytics section |
 | `SUBSTACK_API_KEY` | *(none)* | Substack Developer API key — leave blank for now; the field is ready for when Substack issues keys |
@@ -227,19 +227,19 @@ The agent uses the [Anthropic API](https://console.anthropic.com/) for all conte
 
 ### Model
 
-The default model is **`claude-sonnet-4-20250514`** (Claude Sonnet 4). This is the recommended choice: it produces high-quality promotional copy and handles nuanced extraction well, at a cost of roughly $0.03–0.05 per post.
+The default model is **`claude-sonnet-4-6`** (Claude Sonnet 4). This is the recommended choice: it produces high-quality promotional copy and handles nuanced extraction well, at a cost of roughly $0.03–0.05 per post.
 
 To use a different model, set `ANTHROPIC_MODEL` in `.env`:
 
 ```
-ANTHROPIC_MODEL=claude-sonnet-4-20250514
+ANTHROPIC_MODEL=claude-sonnet-4-6
 ```
 
 Available Claude models and their IDs are listed in the [Anthropic documentation](https://docs.anthropic.com/en/docs/about-claude/models). Haiku models cost less but produce noticeably shorter, less polished output; Opus models cost more with marginal improvement for this workload. Sonnet is the right balance.
 
 ### What the AI does
 
-The agent makes five distinct API calls per new post, plus one on demand for the weekly task:
+The agent makes four API calls per new post, plus one separate weekly call:
 
 | Call | Method | Purpose | Max tokens |
 |---|---|---|---|
@@ -281,7 +281,7 @@ Estimated monthly cost at 2–3 posts/week:
 - ~$0.03–0.05 per post × 10 posts/month ≈ **$0.30–0.50/month** for post processing
 - One-time inventory build for a full back-catalog: **$0.05–0.15**
 - Weekly on-ramp posts: **~$0.10/month**
-- **Total: roughly $2–5/month** at regular publishing cadence
+- **Total: roughly $0.40–0.60/month** at regular publishing cadence
 
 The agent logs an explicit error message with a link to the billing page if your credit balance is too low.
 
@@ -332,7 +332,7 @@ Set `SUBSTACK_LINKEDIN_HANDLE` to your LinkedIn handle (e.g. `johndoe` from `lin
 **Anthropic API:**
 - ~$0.03–0.05 per post processed (sentence extraction + promo + commenting suggestions + inventory metadata)
 - One-time inventory build: ~$0.05–0.15 depending on back-catalog size
-- Publishing 2–3×/week ≈ $2–5/month total
+- Publishing 2–3×/week ≈ $0.40–0.60/month total
 
 **Infrastructure:**
 - Local: free
@@ -451,7 +451,6 @@ promotion-agent/
 ├── supervisord.conf      # Runs agent.py + server.py inside the container
 ├── .env.example          # Configuration template
 ├── .gitignore
-├── article_inventory.md  # Auto-generated inventory export
 ├── README.md
 ├── DEPLOYMENT.md         # Cloud deployment guide (Railway, Render, Fly.io, etc.)
 └── QUICK_REFERENCE.md    # Daily workflow cheat sheet

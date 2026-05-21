@@ -55,7 +55,7 @@ _substack_linkedin = (os.getenv("SUBSTACK_LINKEDIN_HANDLE") or "").strip()
 CONFIG = {
     "substack_url": _raw_substack,
     "anthropic_api_key": os.getenv("ANTHROPIC_API_KEY"),
-    "anthropic_model": os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514"),
+    "anthropic_model": os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6"),
     "db_path": _db_path,
     "review_dashboard_path": str(Path(_db_path).parent / "review_dashboard.json"),
     "check_interval_minutes": int(os.getenv("CHECK_INTERVAL_MINUTES", "60")),
