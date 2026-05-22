@@ -48,10 +48,12 @@
             --teal:            oklch(55%  0.13  179);
             --teal-deep:       oklch(49%  0.13  179);
 
-            /* Platform identity — borrowed, quarantined to badges */
+            /* Platform identity — borrowed, quarantined to badges and tabs */
             --linkedin:  oklch(47%  0.15  243);
+            --facebook:  oklch(52%  0.17  251);
             --substack:  oklch(67%  0.195 37);
             --bluesky:   oklch(60%  0.19  249);
+            --x-brand:   oklch(28%  0.01  293);
 
             /* Elevation */
             --shadow-section: 0 1px 4px oklch(22% 0.014 293 / 0.07),
@@ -215,8 +217,44 @@
             margin-bottom: var(--sp4);
         }
         .platform-badge.linkedin       { background: var(--linkedin);  color: oklch(99% 0.002 293); }
+        .platform-badge.facebook       { background: var(--facebook);  color: oklch(99% 0.002 293); }
         .platform-badge.substack_notes { background: var(--substack);  color: oklch(99% 0.002 293); }
         .platform-badge.bluesky        { background: var(--bluesky);   color: oklch(99% 0.002 293); }
+        .platform-badge.x              { background: var(--x-brand);   color: oklch(99% 0.002 293); }
+
+        /* ── PLATFORM TABS ────────────────────────────────────────── */
+        .platform-tabs {
+            display: flex;
+            gap: 0;
+            margin-top: var(--sp4);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .platform-tab {
+            padding: 7px 14px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            background: transparent;
+            color: var(--text-muted);
+            border: none;
+            border-bottom: 2px solid transparent;
+            border-radius: 0;
+            cursor: pointer;
+            margin-bottom: -1px;
+            transition: color 0.15s, border-color 0.15s;
+            white-space: nowrap;
+        }
+        .platform-tab:hover { color: var(--text-secondary); }
+        .platform-tab.active                  { color: var(--text-primary);  border-bottom-color: var(--plum); }
+        .platform-tab.active.linkedin         { color: var(--linkedin);      border-bottom-color: var(--linkedin); }
+        .platform-tab.active.facebook         { color: var(--facebook);      border-bottom-color: var(--facebook); }
+        .platform-tab.active.bluesky          { color: var(--bluesky);       border-bottom-color: var(--bluesky); }
+        .platform-tab.active.x                { color: var(--x-brand);       border-bottom-color: var(--x-brand); }
+        .platform-tab.active.substack_notes   { color: var(--substack);      border-bottom-color: var(--substack); }
+
+        .platform-panel { margin-top: var(--sp4); }
+        .platform-panel.hidden { display: none; }
 
         /* ── FIELD LABELS ─────────────────────────────────────────── */
         .label {
@@ -569,6 +607,16 @@
         }
         .inventory-summary { color: var(--text-muted); font-style: italic; font-size: 0.87rem; line-height: 1.55; }
         .inventory-date { color: var(--text-faint); font-size: 0.77rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .promote-article-btn {
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            background: var(--plum-tint);
+            color: var(--plum-deep);
+            border: 1px solid oklch(87% 0.055 293);
+            white-space: nowrap;
+        }
+        .promote-article-btn:hover { background: oklch(88% 0.060 293); border-color: oklch(80% 0.080 293); }
+        .promote-article-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
         /* ── KEYBOARD FOCUS & INLINE CONFIRMATION ────────────────── */
         .promo-card.keyboard-focused {
@@ -632,11 +680,133 @@
             clip: rect(0,0,0,0); white-space: nowrap; border: 0;
         }
 
+        /* ── SETTINGS GEAR ───────────────────────────────────────── */
+        .settings-gear-btn {
+            padding: 7px 11px;
+            font-size: 1rem;
+            line-height: 1;
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--r-sm);
+        }
+        .settings-gear-btn:hover { background: var(--surface-low); color: var(--text-secondary); border-color: var(--border-medium); }
+
+        /* ── SETTINGS PANEL ───────────────────────────────────────── */
+        .settings-overlay {
+            position: fixed;
+            inset: 0;
+            background: oklch(22% 0.014 293 / 0.30);
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        .settings-overlay.open { opacity: 1; pointer-events: auto; }
+
+        .settings-panel {
+            position: fixed;
+            top: 0; right: 0; bottom: 0;
+            width: min(440px, 100vw);
+            background: var(--surface);
+            box-shadow: -4px 0 28px oklch(22% 0.014 293 / 0.14);
+            z-index: 101;
+            display: flex;
+            flex-direction: column;
+            transform: translateX(100%);
+            transition: transform 0.22s ease-out;
+        }
+        .settings-panel.open { transform: translateX(0); }
+
+        .settings-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--sp6) var(--sp8);
+            border-bottom: 1px solid var(--border-subtle);
+            flex-shrink: 0;
+        }
+        .settings-panel-header h2 {
+            font-size: 0.88rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            color: var(--text-primary);
+            margin: 0; padding: 0; border: none; text-transform: none;
+            cursor: default; user-select: text;
+        }
+        .settings-close-btn {
+            padding: 5px 9px;
+            font-size: 1rem;
+            line-height: 1;
+            background: transparent;
+            color: var(--text-muted);
+            border: none;
+        }
+        .settings-close-btn:hover { color: var(--text-primary); }
+
+        .settings-panel-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--sp7) var(--sp8);
+        }
+        .settings-section-label {
+            font-size: 0.67rem;
+            font-weight: 700;
+            letter-spacing: 0.10em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: var(--sp5);
+            padding-bottom: var(--sp2);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .settings-field { margin-bottom: var(--sp6); }
+        .settings-field label {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.09em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: var(--sp2);
+        }
+        .settings-field .field-desc {
+            font-size: 0.83rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: var(--sp3);
+        }
+        .settings-field textarea { min-height: 180px; }
+
+        .settings-panel-footer {
+            padding: var(--sp5) var(--sp8);
+            border-top: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            gap: var(--sp4);
+            flex-shrink: 0;
+        }
+        .settings-save-btn {
+            padding: 10px 22px;
+            font-size: 0.93rem;
+            background: var(--plum);
+            color: oklch(99% 0.002 293);
+        }
+        .settings-save-btn:hover { background: var(--plum-deep); }
+        .settings-save-msg {
+            font-size: 0.82rem;
+            color: var(--affirm);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .settings-save-msg.visible { opacity: 1; }
+        .settings-save-msg.error { color: var(--dismiss); }
+
         /* ── REDUCED MOTION ───────────────────────────────────────── */
         @media (prefers-reduced-motion: reduce) {
             button, .section-chevron, .section-content,
             .search-input, .search-select, .promo-card,
-            textarea, .save-indicator { transition: none !important; }
+            textarea, .save-indicator,
+            .settings-overlay, .settings-panel { transition: none !important; }
         }
 
         /* ── RESPONSIVE ───────────────────────────────────────────── */
@@ -656,6 +826,7 @@
             <div class="header-row">
                 <div class="status" id="status" aria-live="polite">Loading...</div>
                 <div class="header-actions">
+                    <button class="settings-gear-btn" onclick="openSettings()" aria-label="Settings" title="Settings">⚙</button>
                     <button class="sync-btn" id="sync-btn" onclick="triggerSubstackSync()">Sync Substack</button>
                     <span class="sync-status-msg" id="sync-status-msg" aria-live="polite"></span>
                 </div>
@@ -721,6 +892,27 @@
         </div>
     </div>
 
+    <!-- Settings overlay + slide-in panel -->
+    <div class="settings-overlay" id="settings-overlay" onclick="closeSettings()"></div>
+    <div class="settings-panel" id="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <div class="settings-panel-header">
+            <h2 id="settings-title">Settings</h2>
+            <button class="settings-close-btn" onclick="closeSettings()" aria-label="Close settings">✕</button>
+        </div>
+        <div class="settings-panel-body">
+            <div class="settings-section-label">Content Generation</div>
+            <div class="settings-field">
+                <label for="setting-ai-voice">AI Voice</label>
+                <p class="field-desc">Describe your writing style and voice. The AI uses this when drafting promotional posts so the copy sounds like you, not a generic template.</p>
+                <textarea id="setting-ai-voice" placeholder="e.g. I write with dry wit and short declarative sentences. I avoid corporate jargon. I often open with a counterintuitive claim, then back it up. I don't use exclamation marks or hype language. My register is confident but never self-promotional."></textarea>
+            </div>
+        </div>
+        <div class="settings-panel-footer">
+            <button class="settings-save-btn" onclick="saveSettings()">Save</button>
+            <span class="settings-save-msg" id="settings-save-msg" aria-live="polite"></span>
+        </div>
+    </div>
+
     <script>
         let dashboardData = null;
 
@@ -736,9 +928,7 @@
         function trackLinkClick(linkEl) {
             const d = linkEl.dataset;
             trackEvent('link_click', {
-                promotion_id: d.promotionId ? parseInt(d.promotionId, 10) : undefined,
                 post_id: d.postId || undefined,
-                platform: d.platform || undefined,
                 extra: d.url || undefined,
             });
         }
@@ -831,40 +1021,68 @@
                 });
         }
 
+        const PLATFORM_ORDER  = ['linkedin', 'facebook', 'bluesky', 'x', 'substack_notes'];
+        const PLATFORM_LABELS = { linkedin: 'LinkedIn', facebook: 'Facebook', bluesky: 'Bluesky', x: 'X', substack_notes: 'Substack' };
+
         function renderPromotions() {
             const container = document.getElementById('promotions-list');
-            const promotions = dashboardData.pending_promotions;
+            const groups = dashboardData.pending_promotions;
 
-            if (promotions.length === 0) {
+            if (groups.length === 0) {
                 container.innerHTML = '<div class="empty-state">No pending promotions. The agent will create new ones when you publish.</div>';
                 return;
             }
 
-            container.innerHTML = promotions.map(promo => `
-                <div class="promo-card" data-id="${promo.promotion_id}" data-post-id="${escapeHtml(promo.post_id || '')}" data-platform="${escapeHtml(promo.platform || '')}">
-                    <div class="post-title">${escapeHtml(promo.post_title)}</div>
-                    <span class="platform-badge ${promo.platform}">${promo.platform.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
-                    ${promo.post_url ? `<a href="${escapeHtml(promo.post_url)}" target="_blank" rel="noopener" class="view-post-link" data-promotion-id="${promo.promotion_id}" data-post-id="${escapeHtml(promo.post_id || '')}" data-platform="${escapeHtml(promo.platform || '')}" data-url="${escapeHtml((promo.post_url || '').substring(0, 200))}" onclick="trackLinkClick(this)">View post ↗</a>` : ''}
+            container.innerHTML = groups.map(group => {
+                const postId = group.post_id;
+                const platformKeys = PLATFORM_ORDER.filter(p => group.platforms[p]);
+                const defaultPlatform = platformKeys[0] || 'linkedin';
+
+                const tabsHtml = platformKeys.map((p, i) => `
+                    <button class="platform-tab ${p}${i === 0 ? ' active' : ''}"
+                            role="tab"
+                            data-platform="${p}"
+                            aria-selected="${i === 0 ? 'true' : 'false'}"
+                            onclick="switchPlatformTab(this.closest('.promo-card').dataset.postId, '${p}')">
+                        ${PLATFORM_LABELS[p] || p}
+                    </button>`).join('');
+
+                const panelsHtml = platformKeys.map((p, i) => {
+                    const pd = group.platforms[p];
+                    return `
+                    <div class="platform-panel${i > 0 ? ' hidden' : ''}"
+                         data-platform="${p}"
+                         data-promo-id="${pd.promotion_id}"
+                         role="tabpanel">
+                        <div class="promotional-post" id="view-${pd.promotion_id}">${escapeHtml(pd.promotional_post)}</div>
+                        <textarea class="promotional-post hidden" id="edit-${pd.promotion_id}" aria-label="Promotional post for ${PLATFORM_LABELS[p] || p}">${escapeHtml(pd.promotional_post)}</textarea>
+                    </div>`;
+                }).join('');
+
+                return `
+                <div class="promo-card" data-post-id="${escapeHtml(postId)}" data-active-platform="${defaultPlatform}">
+                    <div class="post-title">${escapeHtml(group.post_title)}</div>
+                    ${group.post_url ? `<a href="${escapeHtml(group.post_url)}" target="_blank" rel="noopener" class="view-post-link" data-post-id="${escapeHtml(postId)}" data-url="${escapeHtml((group.post_url || '').substring(0, 200))}" onclick="trackLinkClick(this)">View post ↗</a>` : ''}
 
                     <div class="label">Outward Sentence:</div>
-                    <div class="outward-sentence">${escapeHtml(promo.outward_sentence)}</div>
+                    <div class="outward-sentence">${escapeHtml(group.outward_sentence)}</div>
 
                     <div class="label">Promotional Post:</div>
-                    <div class="promotional-post" id="view-${promo.promotion_id}">${escapeHtml(promo.promotional_post)}</div>
-                    <textarea class="promotional-post hidden" id="edit-${promo.promotion_id}" aria-label="Promotional post text">${escapeHtml(promo.promotional_post)}</textarea>
-                    
+                    <div class="platform-tabs" role="tablist" aria-label="Platform versions">${tabsHtml}</div>
+                    ${panelsHtml}
+
                     <div class="actions">
-                        <button class="copy-btn" onclick="copyToClipboard('${promo.promotion_id}', this)">Copy</button>
-                        <button class="edit-btn" onclick="toggleEdit('${promo.promotion_id}')">Edit</button>
-                        <span class="save-indicator" id="save-${promo.promotion_id}" aria-live="polite"></span>
-                        <button class="approve-btn" onclick="markAsPublished('${promo.promotion_id}')">Mark Published</button>
-                        <button class="skip-btn" onclick="skipPromotion('${promo.promotion_id}')">Skip</button>
+                        <button class="copy-btn" onclick="copyCurrentPlatform(this.closest('.promo-card').dataset.postId, this)">Copy</button>
+                        <button class="edit-btn" onclick="editCurrentPlatform(this.closest('.promo-card').dataset.postId)">Edit</button>
+                        <span class="save-indicator" id="save-indicator-${escapeHtml(postId)}" aria-live="polite"></span>
+                        <button class="approve-btn" onclick="markCurrentPlatformPublished(this.closest('.promo-card').dataset.postId)">Mark Published</button>
+                        <button class="skip-btn" onclick="skipAllPlatforms(this.closest('.promo-card').dataset.postId)">Skip All</button>
                     </div>
-                    
-                    <div class="timestamp">Created: ${new Date(promo.created_date).toLocaleString()}</div>
-                    <div class="kbd-hint">Click card to focus, then: <kbd>C</kbd> copy &nbsp;<kbd>E</kbd> edit &nbsp;<kbd>P</kbd> publish &nbsp;<kbd>S</kbd> skip &nbsp;<kbd>↑↓</kbd> navigate</div>
-                </div>
-            `).join('');
+
+                    <div class="timestamp">Created: ${new Date(group.created_date).toLocaleString()}</div>
+                    <div class="kbd-hint">Click card to focus, then: <kbd>C</kbd> copy &nbsp;<kbd>E</kbd> edit &nbsp;<kbd>P</kbd> publish &nbsp;<kbd>S</kbd> skip all &nbsp;<kbd>↑↓</kbd> navigate</div>
+                </div>`;
+            }).join('');
         }
 
         function renderCommentingTasks() {
@@ -992,26 +1210,75 @@
             `).join('');
         }
 
-        function toggleEdit(promoId) {
+        function switchPlatformTab(postId, platform) {
+            const card = document.querySelector(`.promo-card[data-post-id="${CSS.escape(postId)}"]`);
+            if (!card) return;
+            card.dataset.activePlatform = platform;
+            card.querySelectorAll('.platform-tab').forEach(tab => {
+                const active = tab.dataset.platform === platform;
+                tab.classList.toggle('active', active);
+                tab.setAttribute('aria-selected', active ? 'true' : 'false');
+            });
+            card.querySelectorAll('.platform-panel').forEach(panel => {
+                panel.classList.toggle('hidden', panel.dataset.platform !== platform);
+            });
+        }
+
+        function getActivePanel(postId) {
+            const card = document.querySelector(`.promo-card[data-post-id="${CSS.escape(postId)}"]`);
+            if (!card) return null;
+            return card.querySelector(`.platform-panel[data-platform="${card.dataset.activePlatform}"]`);
+        }
+
+        function getActivePromoId(postId) {
+            const panel = getActivePanel(postId);
+            return panel ? panel.dataset.promoId : null;
+        }
+
+        function copyCurrentPlatform(postId, btn) {
+            const promoId = getActivePromoId(postId);
+            if (!promoId) return;
+            const card = document.querySelector(`.promo-card[data-post-id="${CSS.escape(postId)}"]`);
+            const platform = card ? card.dataset.activePlatform : '';
+            const editElem = document.getElementById(`edit-${promoId}`);
+            const text = editElem ? editElem.value : '';
+            trackEvent('copy_post', { promotion_id: parseInt(promoId, 10), post_id: postId, platform });
+            navigator.clipboard.writeText(text).then(() => {
+                const b = btn || (card && card.querySelector('.copy-btn'));
+                if (b) {
+                    const orig = b.textContent;
+                    b.textContent = 'Copied!';
+                    b.classList.add('copied');
+                    srAnnounce('Copied to clipboard.');
+                    setTimeout(() => { b.textContent = orig; b.classList.remove('copied'); }, 2000);
+                }
+            });
+        }
+
+        function editCurrentPlatform(postId) {
+            const promoId = getActivePromoId(postId);
+            if (!promoId) return;
             const viewElem = document.getElementById(`view-${promoId}`);
             const editElem = document.getElementById(`edit-${promoId}`);
-            const card = document.querySelector(`.promo-card[data-id="${promoId}"]`);
+            const card = document.querySelector(`.promo-card[data-post-id="${CSS.escape(postId)}"]`);
             const editBtn = card && card.querySelector('.edit-btn');
             const isEnteringEdit = viewElem && !viewElem.classList.contains('hidden');
-            viewElem.classList.toggle('hidden');
-            editElem.classList.toggle('hidden');
+            if (viewElem) viewElem.classList.toggle('hidden');
+            if (editElem) editElem.classList.toggle('hidden');
             if (editBtn) editBtn.textContent = isEnteringEdit ? 'Done' : 'Edit';
             if (isEnteringEdit && editElem) {
                 editElem.focus();
-                // Sync textarea from view in case it was updated server-side
-                if (viewElem.textContent !== editElem.value) {
+                if (viewElem && viewElem.textContent !== editElem.value) {
                     editElem.value = viewElem.textContent;
                 }
             }
         }
 
         function savePromoEdit(promoId, textarea) {
-            const indicator = document.getElementById(`save-${promoId}`);
+            const panel = textarea.closest('.platform-panel');
+            const card = panel ? panel.closest('.promo-card') : null;
+            const postId = card ? card.dataset.postId : null;
+            const indicator = postId ? document.getElementById(`save-indicator-${postId}`) : null;
             fetch(`/api/update-promotion/${promoId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1019,7 +1286,6 @@
             })
             .then(res => res.ok ? res.json() : Promise.reject(res))
             .then(() => {
-                // Keep view div in sync
                 const viewElem = document.getElementById(`view-${promoId}`);
                 if (viewElem) viewElem.textContent = textarea.value;
                 if (indicator) {
@@ -1034,10 +1300,7 @@
                     indicator.textContent = 'Save failed';
                     indicator.style.color = 'var(--dismiss)';
                     indicator.classList.add('visible');
-                    setTimeout(() => {
-                        indicator.classList.remove('visible');
-                        indicator.style.color = '';
-                    }, 3000);
+                    setTimeout(() => { indicator.classList.remove('visible'); indicator.style.color = ''; }, 3000);
                 }
             });
         }
@@ -1053,31 +1316,12 @@
         document.addEventListener('blur', e => {
             const ta = e.target;
             if (!ta.matches('textarea.promotional-post')) return;
-            const card = ta.closest('.promo-card');
-            if (!card) return;
-            const promoId = card.dataset.id;
+            const panel = ta.closest('.platform-panel');
+            if (!panel) return;
+            const promoId = panel.dataset.promoId;
             if (!promoId) return;
             savePromoEdit(promoId, ta);
         }, true);
-
-        function copyToClipboard(promoId, btn) {
-            const editElem = document.getElementById(`edit-${promoId}`);
-            const text = editElem.value;
-            const card = document.querySelector(`.promo-card[data-id="${promoId}"]`);
-            const postId = card ? card.dataset.postId : '';
-            const platform = card ? card.dataset.platform : '';
-            trackEvent('copy_post', { promotion_id: parseInt(promoId, 10), post_id: postId || undefined, platform: platform || undefined });
-            navigator.clipboard.writeText(text).then(() => {
-                const originalText = btn.textContent;
-                btn.textContent = 'Copied!';
-                btn.classList.add('copied');
-                srAnnounce('Copied to clipboard.');
-                setTimeout(() => {
-                    btn.textContent = originalText;
-                    btn.classList.remove('copied');
-                }, 2000);
-            });
-        }
 
         function copyTaskContent(btn) {
             const taskId = btn.dataset.taskId;
@@ -1119,37 +1363,42 @@
             setTimeout(() => err.remove(), 6000);
         }
 
-        function markAsPublished(promoId) {
-            const card = document.querySelector(`.promo-card[data-id="${promoId}"]`);
+        function markCurrentPlatformPublished(postId) {
+            const card = document.querySelector(`.promo-card[data-post-id="${CSS.escape(postId)}"]`);
             const btn = card && card.querySelector('.approve-btn');
             if (!btn) return;
             if (!_requireConfirm(btn, 'Confirm published', 'Mark Published')) return;
-            const promo = dashboardData && dashboardData.pending_promotions.find(p => p.promotion_id == promoId);
-            trackEvent('mark_published', { promotion_id: parseInt(promoId, 10), post_id: promo?.post_id, platform: promo?.platform });
+            const promoId = getActivePromoId(postId);
+            if (!promoId) return;
+            const platform = card.dataset.activePlatform;
+            trackEvent('mark_published', { promotion_id: parseInt(promoId, 10), post_id: postId, platform });
             setCardUpdating(card, true);
             fetch(`/api/mark-published/${promoId}`, { method: 'POST' })
                 .then(res => res.ok ? res.json() : Promise.reject(res))
-                .then(() => { archiveCard(card, 'Published'); loadDashboard(); })
+                .then(() => loadDashboard())
                 .catch(err => {
                     setCardUpdating(card, false);
                     showCardError(card, err.status ? `Server error ${err.status}.` : 'Could not reach server.');
                 });
         }
 
-        function skipPromotion(promoId) {
-            const card = document.querySelector(`.promo-card[data-id="${promoId}"]`);
+        function skipAllPlatforms(postId) {
+            const card = document.querySelector(`.promo-card[data-post-id="${CSS.escape(postId)}"]`);
             const btn = card && card.querySelector('.skip-btn');
             if (!btn) return;
-            if (!_requireConfirm(btn, 'Confirm skip', 'Skip')) return;
-            const promo = dashboardData && dashboardData.pending_promotions.find(p => p.promotion_id == promoId);
-            trackEvent('skip', { promotion_id: parseInt(promoId, 10), post_id: promo?.post_id, platform: promo?.platform });
+            if (!_requireConfirm(btn, 'Confirm skip', 'Skip All')) return;
+            trackEvent('skip', { post_id: postId });
             setCardUpdating(card, true);
-            fetch(`/api/skip-promotion/${promoId}`, { method: 'POST' })
-                .then(res => res.ok ? res.json() : Promise.reject(res))
-                .then(() => { archiveCard(card, 'Skipped'); loadDashboard(); })
-                .catch(err => {
+            const promoIds = Array.from(card.querySelectorAll('.platform-panel'))
+                .map(p => p.dataset.promoId).filter(Boolean);
+            Promise.all(promoIds.map(id => fetch(`/api/skip-promotion/${id}`, { method: 'POST' })))
+                .then(responses => {
+                    if (responses.every(r => r.ok)) { loadDashboard(); }
+                    else return Promise.reject(new Error('Some skips failed'));
+                })
+                .catch(() => {
                     setCardUpdating(card, false);
-                    showCardError(card, err.status ? `Server error ${err.status}.` : 'Could not reach server.');
+                    showCardError(card, 'Could not skip. Try again.');
                 });
         }
 
@@ -1159,7 +1408,7 @@
                 if (updating && (btn.classList.contains('approve-btn') || btn.classList.contains('skip-btn')))
                     btn.textContent = 'Updating…';
                 else if (btn.classList.contains('approve-btn')) btn.textContent = 'Mark Published';
-                else if (btn.classList.contains('skip-btn')) btn.textContent = 'Skip';
+                else if (btn.classList.contains('skip-btn')) btn.textContent = 'Skip All';
             });
         }
 
@@ -1245,6 +1494,13 @@
                 });
             }
 
+            // Always sort by published date descending
+            filtered = filtered.slice().sort((a, b) => {
+                const ta = a.published_date ? new Date(a.published_date).getTime() : 0;
+                const tb = b.published_date ? new Date(b.published_date).getTime() : 0;
+                return tb - ta;
+            });
+
             const countEl = document.getElementById('inventory-count');
             if (countEl) {
                 const total = _allInventoryItems.length;
@@ -1290,6 +1546,7 @@
                     <th>Published</th>
                     <th>Topics</th>
                     <th>Core Mechanism / Summary</th>
+                    <th></th>
                 </tr></thead><tbody>`;
             items.forEach(item => {
                 const pub = item.published_date ? formatInventoryDate(item.published_date) : '—';
@@ -1313,6 +1570,7 @@
                     <td class="inventory-date">${escapeHtml(pub)}</td>
                     <td><div class="inventory-topics">${topicsHtml}</div></td>
                     <td class="inventory-summary">${summaryHtml || '—'}</td>
+                    <td><button class="promote-article-btn" data-article-id="${escapeHtml(item.id)}" onclick="promoteArticle(this.dataset.articleId, this)">Promote</button></td>
                 </tr>`;
             });
             html += '</tbody></table>';
@@ -1325,6 +1583,73 @@
                 if (isNaN(d.getTime())) return dateStr.slice(0, 10);
                 return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
             } catch { return dateStr.slice(0, 10); }
+        }
+
+        let _promoteArticlePollTimer = null;
+        let _activePromoteBtn = null;
+
+        function promoteArticle(articleId, btn) {
+            if (btn.disabled) return;
+            btn.disabled = true;
+            btn.textContent = 'Promoting…';
+            _activePromoteBtn = btn;
+            const msg = document.getElementById('inventory-status-msg');
+            if (msg) msg.textContent = 'Generating promotions… this takes about 30 seconds.';
+
+            fetch('/api/promote-article', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ article_id: articleId }),
+            })
+            .then(res => res.ok ? res.json() : Promise.reject(res))
+            .then(data => {
+                if (data.status === 'already_running') {
+                    if (msg) msg.textContent = 'Another promotion is already running…';
+                }
+                startPromoteArticlePolling();
+            })
+            .catch(() => {
+                btn.disabled = false;
+                btn.textContent = 'Promote';
+                _activePromoteBtn = null;
+                if (msg) msg.textContent = 'Could not start promotion. Is the server running?';
+            });
+        }
+
+        function startPromoteArticlePolling() {
+            if (_promoteArticlePollTimer) clearInterval(_promoteArticlePollTimer);
+            _promoteArticlePollTimer = setInterval(pollPromoteArticleStatus, 3000);
+        }
+
+        function pollPromoteArticleStatus() {
+            fetch('/api/promote-article/status')
+                .then(res => res.ok ? res.json() : Promise.reject(res))
+                .then(state => {
+                    if (state.running) return;
+                    clearInterval(_promoteArticlePollTimer);
+                    _promoteArticlePollTimer = null;
+                    const btn = _activePromoteBtn;
+                    if (btn) { btn.disabled = false; btn.textContent = 'Promote'; }
+                    _activePromoteBtn = null;
+                    const msg = document.getElementById('inventory-status-msg');
+                    if (state.error) {
+                        if (msg) msg.textContent = `Promotion failed: ${state.error}`;
+                    } else if (state.result === 'already_pending') {
+                        if (msg) { msg.textContent = 'Already has pending promotions — see Pending Promotions section.'; setTimeout(() => { msg.textContent = ''; }, 5000); }
+                    } else if (state.last_run) {
+                        if (msg) { msg.textContent = 'Promotions generated!'; setTimeout(() => { msg.textContent = ''; }, 3000); }
+                        loadDashboard();
+                        // Expand the Pending Promotions section if it's collapsed
+                        const pendingSection = document.querySelector('#promotions-list')?.closest('.section');
+                        if (pendingSection && pendingSection.classList.contains('collapsed')) {
+                            pendingSection.querySelector('h2')?.click();
+                        }
+                    }
+                })
+                .catch(() => {
+                    clearInterval(_promoteArticlePollTimer);
+                    _promoteArticlePollTimer = null;
+                });
         }
 
         function triggerInventoryBuild() {
@@ -1452,6 +1777,54 @@
                 });
         }
 
+        // ── SETTINGS ──────────────────────────────────────────────────
+        function openSettings() {
+            document.getElementById('settings-overlay').classList.add('open');
+            document.getElementById('settings-panel').classList.add('open');
+            setTimeout(() => document.getElementById('setting-ai-voice')?.focus(), 230);
+        }
+
+        function closeSettings() {
+            document.getElementById('settings-overlay').classList.remove('open');
+            document.getElementById('settings-panel').classList.remove('open');
+        }
+
+        function loadSettings() {
+            fetch('/api/settings')
+                .then(res => res.ok ? res.json() : Promise.reject(res))
+                .then(data => {
+                    const el = document.getElementById('setting-ai-voice');
+                    if (el) el.value = data.ai_voice || '';
+                })
+                .catch(() => {});
+        }
+
+        function saveSettings() {
+            const voiceEl = document.getElementById('setting-ai-voice');
+            const msg = document.getElementById('settings-save-msg');
+            fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ai_voice: voiceEl ? voiceEl.value : '' }),
+            })
+            .then(res => res.ok ? res.json() : Promise.reject(res))
+            .then(() => {
+                if (msg) {
+                    msg.textContent = 'Saved';
+                    msg.classList.remove('error');
+                    msg.classList.add('visible');
+                    setTimeout(() => msg.classList.remove('visible'), 2500);
+                }
+            })
+            .catch(() => {
+                if (msg) {
+                    msg.textContent = 'Save failed';
+                    msg.classList.add('visible', 'error');
+                    setTimeout(() => { msg.classList.remove('visible', 'error'); }, 3000);
+                }
+            });
+        }
+
         function initCollapsibleSections() {
             document.querySelectorAll('.section').forEach(section => {
                 const h2 = section.querySelector(':scope > h2');
@@ -1550,13 +1923,17 @@
                 return;
             }
             if (e.key === 'Escape') {
+                if (document.getElementById('settings-panel')?.classList.contains('open')) {
+                    closeSettings();
+                    return;
+                }
                 const card = getFocusedCard();
                 if (card) {
                     card.querySelectorAll('[data-confirming="true"]').forEach(btn => {
                         clearTimeout(btn._confirmTimer);
                         btn.dataset.confirming = '';
                         btn.classList.remove('confirming');
-                        if (btn.classList.contains('skip-btn')) btn.textContent = 'Skip';
+                        if (btn.classList.contains('skip-btn')) btn.textContent = 'Skip All';
                         else if (btn.classList.contains('approve-btn')) btn.textContent = 'Mark Published';
                     });
                 }
@@ -1567,12 +1944,12 @@
 
             const card = getFocusedCard();
             if (!card) return;
-            const promoId = card.dataset.id;
+            const postId = card.dataset.postId;
 
-            if (e.key === 'c' || e.key === 'C') { e.preventDefault(); copyToClipboard(promoId); }
-            else if (e.key === 's' || e.key === 'S') { e.preventDefault(); skipPromotion(promoId); }
-            else if (e.key === 'p' || e.key === 'P') { e.preventDefault(); markAsPublished(promoId); }
-            else if (e.key === 'e' || e.key === 'E') { e.preventDefault(); toggleEdit(promoId); }
+            if (e.key === 'c' || e.key === 'C') { e.preventDefault(); copyCurrentPlatform(postId); }
+            else if (e.key === 's' || e.key === 'S') { e.preventDefault(); skipAllPlatforms(postId); }
+            else if (e.key === 'p' || e.key === 'P') { e.preventDefault(); markCurrentPlatformPublished(postId); }
+            else if (e.key === 'e' || e.key === 'E') { e.preventDefault(); editCurrentPlatform(postId); }
         });
 
         // Click on a card to focus it for keyboard use
@@ -1588,6 +1965,7 @@
         initCollapsibleSections();
         loadDashboard();
         loadInventory();
+        loadSettings();
         setInterval(loadDashboard, 5 * 60 * 1000);
         setInterval(loadInventory, 5 * 60 * 1000);
     </script>

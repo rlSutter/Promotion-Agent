@@ -70,18 +70,25 @@ def _regenerate_dashboard_json():
             WHERE p.status = 'pending_review'
             ORDER BY p.created_date DESC
         """)
-        pending = []
+        seen_order = []
+        posts_map = {}
         for row in cursor.fetchall():
-            pending.append({
+            pid = row[1]
+            if pid not in posts_map:
+                seen_order.append(pid)
+                posts_map[pid] = {
+                    "post_id": pid,
+                    "post_title": row[2],
+                    "post_url": row[3],
+                    "outward_sentence": row[5],
+                    "created_date": row[7],
+                    "platforms": {},
+                }
+            posts_map[pid]["platforms"][row[4]] = {
                 "promotion_id": row[0],
-                "post_id": row[1],
-                "post_title": row[2],
-                "post_url": row[3],
-                "platform": row[4],
-                "outward_sentence": row[5],
                 "promotional_post": row[6],
-                "created_date": row[7],
-            })
+            }
+        pending = [posts_map[pid] for pid in seen_order]
         cursor.execute("""
             SELECT post_id, details FROM activity_log
             WHERE activity_type = 'commenting_suggestions'
@@ -409,6 +416,9 @@ _inventory_build_lock = threading.Lock()
 _substack_sync_state = {"running": False, "last_run": None, "new_posts": 0, "error": None}
 _substack_sync_lock = threading.Lock()
 
+_promote_article_state = {"running": False, "article_id": None, "result": None, "error": None, "last_run": None}
+_promote_article_lock = threading.Lock()
+
 
 def _run_inventory_build_thread():
     global _inventory_build_state
@@ -549,6 +559,86 @@ def substack_sync_status():
     """Return the current state of the Substack sync."""
     with _substack_sync_lock:
         return jsonify(dict(_substack_sync_state))
+
+
+@app.route('/api/settings')
+def get_settings():
+    """Return all user-configurable settings."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT, updated_at TEXT)")
+        cursor.execute("SELECT key, value FROM settings")
+        settings = dict(cursor.fetchall())
+        conn.close()
+        return jsonify(settings)
+    except sqlite3.OperationalError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/settings', methods=['POST'])
+def save_settings():
+    """Persist one or more user settings."""
+    data = request.get_json() or {}
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT, updated_at TEXT)")
+        for key, value in data.items():
+            cursor.execute(
+                "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, ?)",
+                (str(key), str(value), datetime.now().isoformat())
+            )
+        conn.commit()
+        conn.close()
+        return jsonify({"status": "success"})
+    except sqlite3.OperationalError as e:
+        return jsonify({"error": str(e), "status": "error"}), 500
+
+
+def _run_promote_article_thread(article_id):
+    global _promote_article_state
+    with _promote_article_lock:
+        _promote_article_state["running"] = True
+        _promote_article_state["article_id"] = article_id
+        _promote_article_state["error"] = None
+        _promote_article_state["result"] = None
+    try:
+        from agent import PromotionAgent
+        agent = PromotionAgent()
+        result = agent.promote_inventory_article(article_id)
+        _regenerate_dashboard_json()
+        with _promote_article_lock:
+            _promote_article_state["running"] = False
+            _promote_article_state["last_run"] = datetime.now().isoformat()
+            _promote_article_state["result"] = result
+    except Exception as e:
+        with _promote_article_lock:
+            _promote_article_state["running"] = False
+            _promote_article_state["error"] = str(e)
+        print(f"[Promote] Failed: {e}", flush=True)
+
+
+@app.route('/api/promote-article', methods=['POST'])
+def promote_article():
+    """Generate promotional drafts for an inventory article across all platforms."""
+    data = request.get_json() or {}
+    article_id = (data.get('article_id') or '').strip()
+    if not article_id:
+        return jsonify({"error": "article_id required", "status": "error"}), 400
+    with _promote_article_lock:
+        if _promote_article_state["running"]:
+            return jsonify({"status": "already_running"})
+    t = threading.Thread(target=_run_promote_article_thread, args=(article_id,), daemon=True)
+    t.start()
+    return jsonify({"status": "started"})
+
+
+@app.route('/api/promote-article/status')
+def promote_article_status():
+    """Return the current state of the article promotion job."""
+    with _promote_article_lock:
+        return jsonify(dict(_promote_article_state))
 
 
 if __name__ == '__main__':

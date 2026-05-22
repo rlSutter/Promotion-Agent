@@ -63,6 +63,8 @@ CONFIG = {
     "substack_linkedin_handle": _substack_linkedin if _substack_linkedin else None,
 }
 
+ALL_PLATFORMS = ["linkedin", "facebook", "bluesky", "x", "substack_notes"]
+
 # Platform routing rules based on keywords/topics
 PLATFORM_ROUTING = {
     "linkedin": [
@@ -209,6 +211,15 @@ class PromotionAgent:
             )
         """)
 
+        # User-configurable settings (key/value store)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT,
+                updated_at TEXT
+            )
+        """)
+
         conn.commit()
         conn.close()
         print(f"[DB] Database initialized at: {self.db_path}")
@@ -218,6 +229,18 @@ class PromotionAgent:
         if getattr(self, "_use_db_uri", False):
             return sqlite3.connect(self._db_uri, uri=True)
         return sqlite3.connect(self.db_path)
+
+    def get_setting(self, key: str, default: str = "") -> str:
+        """Read a single user setting from the settings table."""
+        try:
+            conn = self._db_connect()
+            cursor = conn.cursor()
+            cursor.execute("SELECT value FROM settings WHERE key = ?", (key,))
+            row = cursor.fetchone()
+            conn.close()
+            return row[0] if row else default
+        except Exception:
+            return default
 
     def fetch_substack_profile(self) -> Optional[Dict[str, Any]]:
         """
@@ -369,17 +392,60 @@ Return ONLY the sentence(s), nothing else."""
         
         return max(scores, key=scores.get)
     
-    def generate_promotional_post(self, title: str, content: str, 
-                                   outward_sentence: str, platform: str, url: str) -> str:
+    def generate_promotional_post(self, title: str, content: str,
+                                   outward_sentence: str, platform: str, url: str,
+                                   voice_description: str = "") -> str:
         """Generate the promotional post for the chosen platform"""
-        
+
         platform_guidelines = {
             "linkedin": "Professional, outcomes-focused. 2-3 sentences. LinkedIn tone.",
-            "substack_notes": "Thoughtful, complete idea. 2-3 sentences. Can be slightly more casual.",
+            "facebook": "Warm, conversational. 2-4 sentences. Story-forward, invites reflection. More personal register than LinkedIn.",
             "bluesky": "Playful, gift-like. Short and punchy. Conversational.",
+            "x": "Extremely concise. The post text plus the URL must fit within 280 characters. One sharp sentence that makes the idea land. No filler.",
+            "substack_notes": "Thoughtful, complete idea. 2-3 sentences. Can be slightly more casual.",
         }
         
-        prompt = f"""You are drafting a promotional post for a blog article.
+        platform_len = {
+            "linkedin": "2–3 sentences",
+            "facebook": "2–4 sentences",
+            "bluesky": "1–2 short sentences",
+            "x": "one sentence — post text plus URL must fit 280 characters",
+            "substack_notes": "2–3 sentences",
+        }.get(platform, "2–3 sentences")
+
+        if voice_description and voice_description.strip():
+            # Voice-first prompt: the author's style rules are the primary constraint.
+            # The structural scaffold is removed entirely because it produces exactly the
+            # mechanical patterns (tricolon, em-dash pivots, "X is not Y") that a voiced
+            # prompt is trying to avoid. Platform guidelines become a secondary length reference.
+            prompt = f"""You are drafting a short promotional post for a blog article.
+
+AUTHOR'S VOICE — this is the primary constraint. Follow it exactly and do not revert to default AI writing patterns:
+{voice_description.strip()}
+
+---
+Platform: {platform}
+Length target (secondary to voice): {platform_len}
+Platform register (secondary to voice): {platform_guidelines.get(platform, "Clear and conversational")}
+
+Article title: {title}
+Core claim to communicate: {outward_sentence}
+
+Article excerpt:
+{content[:2000]}
+
+Write the promotional post now. Include the article link at the end with a plain, low-key transition.
+
+Before returning, re-read the author's voice rules above and check your draft against them. If the draft violates any of those rules, rewrite it until it does not.
+
+Additional constraints that always apply:
+- No teasing or "here's a snippet" framing — make it a complete thought that stands alone
+- No hype, no cringe, no "you won't believe"
+- The post must work without the reader having read the article
+
+Return ONLY the post text, including the link ({url}). No preamble."""
+        else:
+            prompt = f"""You are drafting a promotional post for a blog article.
 
 Platform: {platform}
 Platform style: {platform_guidelines.get(platform, "Clear and conversational")}
@@ -438,30 +504,32 @@ Return ONLY the promotional post text, including the link at the end ({url})."""
         outward_sentence = self.extract_outward_sentence(post["title"], post["content"])
         print(f"     '{outward_sentence}'")
 
-        # Step 2: Determine platform
-        platform = self.determine_platform(post["title"], post["content"])
-        print(f"  -> Routed to: {platform}")
+        # Step 2: Determine suggested platform (used for commenting task context only)
+        suggested_platform = self.determine_platform(post["title"], post["content"])
+        print(f"  -> Suggested platform: {suggested_platform}")
 
-        # Step 3: Generate promotional post
-        print("  -> Generating promotional post...")
-        promo_post = self.generate_promotional_post(
-            post["title"], post["content"], outward_sentence, platform, post["url"]
-        )
-
-        # Step 4: Save to database
+        # Step 3: Generate promotional posts for all platforms
+        print("  -> Generating promotional posts for all platforms...")
+        voice = self.get_setting("ai_voice")
         conn = self._db_connect()
         cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO promotions (post_id, platform, outward_sentence, promotional_post, created_date)
-            VALUES (?, ?, ?, ?, ?)
-        """, (post["id"], platform, outward_sentence, promo_post, datetime.now().isoformat()))
+        for platform in ALL_PLATFORMS:
+            print(f"     [{platform}]...")
+            promo_post = self.generate_promotional_post(
+                post["title"], post["content"], outward_sentence, platform, post["url"],
+                voice_description=voice
+            )
+            cursor.execute("""
+                INSERT INTO promotions (post_id, platform, outward_sentence, promotional_post, created_date)
+                VALUES (?, ?, ?, ?, ?)
+            """, (post["id"], platform, outward_sentence, promo_post, datetime.now().isoformat()))
         conn.commit()
         conn.close()
 
         print("  -> Saved to review dashboard")
 
         # Generate ecosystem commenting suggestions
-        self.generate_commenting_tasks(post["id"], post["title"], platform)
+        self.generate_commenting_tasks(post["id"], post["title"], suggested_platform)
 
         # Add to article inventory
         print("  -> Adding to article inventory...")
@@ -512,28 +580,35 @@ Return as a brief numbered list."""
         conn = self._db_connect()
         cursor = conn.cursor()
         
-        # Get pending promotions
+        # Get pending promotions — grouped by post so the UI can show platform tabs
         cursor.execute("""
-            SELECT p.id, p.post_id, posts.title, posts.url, p.platform, 
+            SELECT p.id, p.post_id, posts.title, posts.url, p.platform,
                    p.outward_sentence, p.promotional_post, p.created_date
             FROM promotions p
             JOIN posts ON p.post_id = posts.id
             WHERE p.status = 'pending_review'
             ORDER BY p.created_date DESC
         """)
-        
-        pending = []
+
+        seen_order = []
+        posts_map = {}
         for row in cursor.fetchall():
-            pending.append({
+            pid = row[1]
+            if pid not in posts_map:
+                seen_order.append(pid)
+                posts_map[pid] = {
+                    "post_id": pid,
+                    "post_title": row[2],
+                    "post_url": row[3],
+                    "outward_sentence": row[5],
+                    "created_date": row[7],
+                    "platforms": {},
+                }
+            posts_map[pid]["platforms"][row[4]] = {
                 "promotion_id": row[0],
-                "post_id": row[1],
-                "post_title": row[2],
-                "post_url": row[3],
-                "platform": row[4],
-                "outward_sentence": row[5],
                 "promotional_post": row[6],
-                "created_date": row[7],
-            })
+            }
+        pending = [posts_map[pid] for pid in seen_order]
         
         # Get commenting suggestions
         cursor.execute("""
@@ -878,6 +953,86 @@ Return ONLY valid JSON. No markdown fences, no explanation."""
             print(f"[Inventory] Exported {count} articles to {md_path}", flush=True)
         except Exception as e:
             print(f"[Inventory] Markdown export failed: {e}", flush=True)
+
+    def promote_inventory_article(self, article_id: str) -> str:
+        """Generate promotion drafts for an inventory article across all platforms.
+        Returns 'generated' or 'already_pending'."""
+        conn = self._db_connect()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT title, subtitle, url, published_date, topics, core_mechanism
+            FROM article_inventory WHERE id = ?
+        """, (article_id,))
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            raise ValueError(f"Article {article_id} not found in inventory")
+
+        title, subtitle, url, published_date, topics, core_mechanism = row
+
+        cursor.execute(
+            "SELECT COUNT(*) FROM promotions WHERE post_id = ? AND status = 'pending_review'",
+            (article_id,)
+        )
+        pending_count = cursor.fetchone()[0]
+        conn.close()
+
+        if pending_count > 0:
+            print(f"[Promote] '{title}' already has {pending_count} pending promotions", flush=True)
+            return "already_pending"
+
+        # Use content from posts table if available; otherwise use inventory metadata
+        conn = self._db_connect()
+        cursor = conn.cursor()
+        cursor.execute("SELECT content FROM posts WHERE id = ?", (article_id,))
+        post_row = cursor.fetchone()
+        content = post_row[0] if post_row else ""
+        conn.close()
+
+        if not content:
+            content = " ".join(p for p in [subtitle or "", topics or "", core_mechanism or ""] if p)
+
+        # Ensure a posts entry exists for the FK in promotions
+        conn = self._db_connect()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM posts WHERE id = ?", (article_id,))
+        if not cursor.fetchone():
+            cursor.execute("""
+                INSERT OR IGNORE INTO posts
+                    (id, title, url, content, published_date, discovered_date)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (article_id, title, url, content, published_date or "",
+                  datetime.now().isoformat()))
+            conn.commit()
+        conn.close()
+
+        print(f"[Promote] Generating all platform promos for '{title}'...", flush=True)
+        outward_sentence = self.extract_outward_sentence(title, content)
+        print(f"  -> '{outward_sentence}'", flush=True)
+        suggested_platform = self.determine_platform(title, content)
+
+        voice = self.get_setting("ai_voice")
+        conn = self._db_connect()
+        cursor = conn.cursor()
+        for platform in ALL_PLATFORMS:
+            print(f"  -> [{platform}]...", flush=True)
+            promo_post = self.generate_promotional_post(
+                title, content, outward_sentence, platform, url,
+                voice_description=voice
+            )
+            cursor.execute("""
+                INSERT INTO promotions
+                    (post_id, platform, outward_sentence, promotional_post, created_date)
+                VALUES (?, ?, ?, ?, ?)
+            """, (article_id, platform, outward_sentence, promo_post,
+                  datetime.now().isoformat()))
+        conn.commit()
+        conn.close()
+
+        self.generate_commenting_tasks(article_id, title, suggested_platform)
+        self.generate_review_dashboard()
+        print(f"[Promote] Done: '{title}'", flush=True)
+        return "generated"
 
     def run(self):
         """Main agent loop"""

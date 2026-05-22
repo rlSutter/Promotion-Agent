@@ -452,6 +452,7 @@ promotion-agent/
 ├── .env.example          # Configuration template
 ├── .gitignore
 ├── README.md
+├── CHANGELOG.md          # Release history and notable changes
 ├── DEPLOYMENT.md         # Cloud deployment guide (Railway, Render, Fly.io, etc.)
 └── QUICK_REFERENCE.md    # Daily workflow cheat sheet
 ```
@@ -524,6 +525,12 @@ The dashboard meets WCAG AA contrast requirements, is keyboard navigable, and re
 ## License
 
 MIT — use freely, modify as needed, no warranty.
+
+---
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a full list of changes by release.
 
 ---
 
