@@ -58,7 +58,7 @@ cp .env.example .env
 # Edit .env — at minimum set SUBSTACK_URL and ANTHROPIC_API_KEY
 
 # 3. Start the agent
-docker-compose up -d
+docker compose up -d
 
 # 4. Open the dashboard
 # http://localhost:5000
@@ -142,16 +142,16 @@ Works on Windows, Mac, and Linux. Everything runs in a container — no Python e
 
 ```bash
 # Start
-docker-compose up -d
+docker compose up -d
 
 # Stop
-docker-compose down
+docker compose down
 
 # View logs
-docker-compose logs -f promotion-agent
+docker compose logs -f promotion-agent
 
 # Rebuild after code changes
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 Dashboard: `http://localhost:5000`
@@ -445,6 +445,8 @@ promotion-agent/
 ├── dashboard.html        # Single-page review interface
 ├── create_db.py          # Standalone DB initializer (run if agent hasn't run yet)
 ├── db_shell.py           # Interactive SQL shell
+├── setup.sh              # First-time setup script (Linux/Mac)
+├── setup.ps1             # First-time setup script (Windows PowerShell)
 ├── requirements.txt      # Python dependencies
 ├── Dockerfile
 ├── docker-compose.yml
@@ -454,7 +456,8 @@ promotion-agent/
 ├── README.md
 ├── CHANGELOG.md          # Release history and notable changes
 ├── DEPLOYMENT.md         # Cloud deployment guide (Railway, Render, Fly.io, etc.)
-└── QUICK_REFERENCE.md    # Daily workflow cheat sheet
+├── QUICK_REFERENCE.md    # Daily workflow cheat sheet
+└── data/                 # Docker volume mount: promotion_agent.db + review_dashboard.json
 ```
 
 ---
