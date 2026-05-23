@@ -189,7 +189,7 @@
             transition: border-color 0.15s;
             background: var(--surface);
         }
-        .promo-card:hover { border-color: var(--affirm); }
+        .promo-card:hover { border-color: var(--border-medium); }
         .promo-card:last-child { margin-bottom: 0; }
 
         .post-title {
@@ -482,6 +482,7 @@
             background: var(--surface-archived);
             border-color: var(--border-medium);
         }
+        .promo-card.archived { opacity: 0.6; }
         .promo-card.archived:hover,
         .archive-card:hover { border-color: var(--border-medium); }
 
@@ -654,6 +655,16 @@
         }
         .save-indicator.visible { opacity: 1; }
 
+        kbd {
+            font-family: var(--ui);
+            font-size: 0.67rem;
+            background: var(--surface-low);
+            border: 1px solid var(--border-medium);
+            border-radius: 3px;
+            padding: 1px 5px;
+            color: var(--text-secondary);
+        }
+
         .kbd-hint {
             display: none;
             font-size: 0.67rem;
@@ -662,14 +673,13 @@
             margin-top: var(--sp4);
         }
         .promo-card.keyboard-focused .kbd-hint { display: block; }
-        .kbd-hint kbd {
-            font-family: var(--ui);
+
+        .section-shortcuts {
             font-size: 0.67rem;
-            background: var(--surface-low);
-            border: 1px solid var(--border-medium);
-            border-radius: 3px;
-            padding: 1px 5px;
-            color: var(--text-secondary);
+            color: var(--text-faint);
+            letter-spacing: 0.04em;
+            margin-top: calc(-1 * var(--sp2));
+            margin-bottom: var(--sp5);
         }
 
         /* ── UTILITIES ────────────────────────────────────────────── */
@@ -814,7 +824,23 @@
             body { padding: var(--sp3); }
             header, .section { padding: var(--sp5); }
             .skip-btn { margin-left: 0; }
+
+            /* Inventory table: hide Topics and Summary on narrow screens.
+               Title, Published date, and Promote button remain. */
             .inventory-table { font-size: 0.77rem; }
+            .inventory-table th:nth-child(3),
+            .inventory-table th:nth-child(4),
+            .inventory-table td:nth-child(3),
+            .inventory-table td:nth-child(4) { display: none; }
+
+            /* Platform tabs: scroll horizontally instead of overflowing */
+            .platform-tabs {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+            }
+            .platform-tabs::-webkit-scrollbar { display: none; }
+            .platform-tab { padding: 7px 11px; }
         }
     </style>
 </head>
@@ -835,6 +861,8 @@
 
         <div class="section">
             <h2>Pending Promotions</h2>
+            <p class="section-desc">AI-drafted posts for each platform. Copy, edit if needed, then mark it published.</p>
+            <p class="section-shortcuts"><kbd>↑↓</kbd> navigate &nbsp;<kbd>C</kbd> copy &nbsp;<kbd>E</kbd> edit &nbsp;<kbd>P</kbd> publish &nbsp;<kbd>S</kbd> skip &nbsp;(click a card first)</p>
             <div id="promotions-list"></div>
         </div>
 
@@ -1026,6 +1054,11 @@
 
         function renderPromotions() {
             const container = document.getElementById('promotions-list');
+            // Flush unsaved edits before re-rendering so auto-refresh doesn't discard them
+            container.querySelectorAll('textarea.promotional-post:not(.hidden)').forEach(ta => {
+                const panel = ta.closest('.platform-panel');
+                if (panel && panel.dataset.promoId) savePromoEdit(panel.dataset.promoId, ta);
+            });
             const groups = dashboardData.pending_promotions;
 
             if (groups.length === 0) {
@@ -1075,12 +1108,12 @@
                         <button class="copy-btn" onclick="copyCurrentPlatform(this.closest('.promo-card').dataset.postId, this)">Copy</button>
                         <button class="edit-btn" onclick="editCurrentPlatform(this.closest('.promo-card').dataset.postId)">Edit</button>
                         <span class="save-indicator" id="save-indicator-${escapeHtml(postId)}" aria-live="polite"></span>
-                        <button class="approve-btn" onclick="markCurrentPlatformPublished(this.closest('.promo-card').dataset.postId)">Mark Published</button>
-                        <button class="skip-btn" onclick="skipAllPlatforms(this.closest('.promo-card').dataset.postId)">Skip All</button>
+                        <button class="approve-btn" onclick="markCurrentPlatformPublished(this.closest('.promo-card').dataset.postId)">Mark ${PLATFORM_LABELS[defaultPlatform] || defaultPlatform} Published</button>
+                        <button class="skip-btn" onclick="skipAllPlatforms(this.closest('.promo-card').dataset.postId)">Skip Post</button>
                     </div>
 
                     <div class="timestamp">Created: ${new Date(group.created_date).toLocaleString()}</div>
-                    <div class="kbd-hint">Click card to focus, then: <kbd>C</kbd> copy &nbsp;<kbd>E</kbd> edit &nbsp;<kbd>P</kbd> publish &nbsp;<kbd>S</kbd> skip all &nbsp;<kbd>↑↓</kbd> navigate</div>
+                    <div class="kbd-hint"><kbd>C</kbd> copy &nbsp;<kbd>E</kbd> edit &nbsp;<kbd>P</kbd> publish &nbsp;<kbd>S</kbd> skip post &nbsp;<kbd>↑↓</kbd> navigate</div>
                 </div>`;
             }).join('');
         }
@@ -1091,6 +1124,7 @@
 
             if (Object.keys(suggestions).length === 0) {
                 container.innerHTML = '<div class="empty-state">No commenting suggestions generated yet.</div>';
+
                 return;
             }
 
@@ -1154,6 +1188,8 @@
             navigator.clipboard.writeText(content).then(() => {
                 const btn = card && card.querySelector('.copy-btn');
                 if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy'; }, 2000); }
+            }).catch(() => {
+                if (card) showCardError(card, 'Copy failed. Select the text and copy manually.');
             });
         }
 
@@ -1202,7 +1238,7 @@
                     <div class="task-type">${escapeHtml(task.task_type.replace('_', ' ').toUpperCase())}</div>
                     <div class="commenting-suggestions">${escapeHtml(task.content)}</div>
                     <div class="actions">
-                        <button class="copy-btn" data-task-id="${task.task_id}" data-content="${escapeHtml(task.content)}" onclick="copyTaskContent(this)">Copy</button>
+                        <button class="copy-btn" data-task-id="${task.task_id}" onclick="copyTaskContent(this)">Copy</button>
                         <button class="approve-btn" onclick="markTaskComplete('${task.task_id}')">Mark Complete</button>
                     </div>
                     <div class="timestamp">Due: ${new Date(task.due_date).toLocaleDateString()}</div>
@@ -1222,6 +1258,10 @@
             card.querySelectorAll('.platform-panel').forEach(panel => {
                 panel.classList.toggle('hidden', panel.dataset.platform !== platform);
             });
+            const approveBtn = card.querySelector('.approve-btn');
+            if (approveBtn && approveBtn.dataset.confirming !== 'true') {
+                approveBtn.textContent = `Mark ${PLATFORM_LABELS[platform] || platform} Published`;
+            }
         }
 
         function getActivePanel(postId) {
@@ -1252,6 +1292,8 @@
                     srAnnounce('Copied to clipboard.');
                     setTimeout(() => { b.textContent = orig; b.classList.remove('copied'); }, 2000);
                 }
+            }).catch(() => {
+                if (card) showCardError(card, 'Copy failed. Select the text and copy manually.');
             });
         }
 
@@ -1325,7 +1367,8 @@
 
         function copyTaskContent(btn) {
             const taskId = btn.dataset.taskId;
-            const content = btn.dataset.content;
+            const taskItem = btn.closest('.task-item');
+            const content = taskItem ? (taskItem.querySelector('.commenting-suggestions')?.textContent || '') : '';
             trackEvent('copy_task', { task_id: parseInt(taskId, 10) });
             navigator.clipboard.writeText(content).then(() => {
                 const originalText = btn.textContent;
@@ -1335,6 +1378,9 @@
                     btn.textContent = originalText;
                     btn.classList.remove('copied');
                 }, 2000);
+            }).catch(() => {
+                btn.textContent = 'Copy failed';
+                setTimeout(() => { btn.textContent = 'Copy'; }, 2500);
             });
         }
 
@@ -1367,10 +1413,11 @@
             const card = document.querySelector(`.promo-card[data-post-id="${CSS.escape(postId)}"]`);
             const btn = card && card.querySelector('.approve-btn');
             if (!btn) return;
-            if (!_requireConfirm(btn, 'Confirm published', 'Mark Published')) return;
+            const platform = card.dataset.activePlatform;
+            const platformLabel = PLATFORM_LABELS[platform] || platform;
+            if (!_requireConfirm(btn, 'Confirm?', `Mark ${platformLabel} Published`)) return;
             const promoId = getActivePromoId(postId);
             if (!promoId) return;
-            const platform = card.dataset.activePlatform;
             trackEvent('mark_published', { promotion_id: parseInt(promoId, 10), post_id: postId, platform });
             setCardUpdating(card, true);
             fetch(`/api/mark-published/${promoId}`, { method: 'POST' })
@@ -1386,7 +1433,7 @@
             const card = document.querySelector(`.promo-card[data-post-id="${CSS.escape(postId)}"]`);
             const btn = card && card.querySelector('.skip-btn');
             if (!btn) return;
-            if (!_requireConfirm(btn, 'Confirm skip', 'Skip All')) return;
+            if (!_requireConfirm(btn, 'Confirm skip post?', 'Skip Post')) return;
             trackEvent('skip', { post_id: postId });
             setCardUpdating(card, true);
             const promoIds = Array.from(card.querySelectorAll('.platform-panel'))
@@ -1407,8 +1454,11 @@
                 btn.disabled = updating;
                 if (updating && (btn.classList.contains('approve-btn') || btn.classList.contains('skip-btn')))
                     btn.textContent = 'Updating…';
-                else if (btn.classList.contains('approve-btn')) btn.textContent = 'Mark Published';
-                else if (btn.classList.contains('skip-btn')) btn.textContent = 'Skip All';
+                else if (btn.classList.contains('approve-btn')) {
+                    const platform = card.dataset.activePlatform;
+                    btn.textContent = `Mark ${PLATFORM_LABELS[platform] || platform} Published`;
+                }
+                else if (btn.classList.contains('skip-btn')) btn.textContent = 'Skip Post';
             });
         }
 
@@ -1417,7 +1467,7 @@
             card.dataset.archivedStatus = status;
             const actions = card.querySelector('.actions');
             if (actions) actions.innerHTML = `<span class="archived-badge ${status.toLowerCase()}">${status}</span>`;
-            card.style.opacity = '0.6';
+            srAnnounce(status === 'published' ? 'Marked as published and moved to archive.' : 'Post skipped and moved to archive.');
         }
 
         function markTaskComplete(taskId) {
@@ -1545,8 +1595,8 @@
                     <th>Title &amp; Subtitle</th>
                     <th>Published</th>
                     <th>Topics</th>
-                    <th>Core Mechanism / Summary</th>
-                    <th></th>
+                    <th>Summary</th>
+                    <th scope="col" aria-label="Actions"></th>
                 </tr></thead><tbody>`;
             items.forEach(item => {
                 const pub = item.published_date ? formatInventoryDate(item.published_date) : '—';
@@ -1635,7 +1685,7 @@
                     if (state.error) {
                         if (msg) msg.textContent = `Promotion failed: ${state.error}`;
                     } else if (state.result === 'already_pending') {
-                        if (msg) { msg.textContent = 'Already has pending promotions — see Pending Promotions section.'; setTimeout(() => { msg.textContent = ''; }, 5000); }
+                        if (msg) { msg.textContent = 'Already has pending promotions; see Pending Promotions above.'; setTimeout(() => { msg.textContent = ''; }, 5000); }
                     } else if (state.last_run) {
                         if (msg) { msg.textContent = 'Promotions generated!'; setTimeout(() => { msg.textContent = ''; }, 3000); }
                         loadDashboard();
@@ -1852,8 +1902,8 @@
                 chevron.textContent = '▾';
                 h2.appendChild(chevron);
 
-                // Accordion ARIA
-                const initiallyCollapsed = localStorage.getItem(storageKey) !== '0';
+                // Accordion ARIA — default to expanded; only collapse if user explicitly closed it
+                const initiallyCollapsed = localStorage.getItem(storageKey) === '1';
                 h2.setAttribute('tabindex', '0');
                 h2.setAttribute('aria-expanded', initiallyCollapsed ? 'false' : 'true');
                 h2.setAttribute('aria-controls', content.id);
@@ -1933,8 +1983,12 @@
                         clearTimeout(btn._confirmTimer);
                         btn.dataset.confirming = '';
                         btn.classList.remove('confirming');
-                        if (btn.classList.contains('skip-btn')) btn.textContent = 'Skip All';
-                        else if (btn.classList.contains('approve-btn')) btn.textContent = 'Mark Published';
+                        if (btn.classList.contains('skip-btn')) btn.textContent = 'Skip Post';
+                        else if (btn.classList.contains('approve-btn')) {
+                            const c = btn.closest('.promo-card');
+                            const p = c ? c.dataset.activePlatform : '';
+                            btn.textContent = `Mark ${PLATFORM_LABELS[p] || p} Published`;
+                        }
                     });
                 }
                 return;
